@@ -36,26 +36,29 @@ ch.setFormatter(formatter)
 logger.addHandler(fh)
 logger.addHandler(ch)
 
+def send_response(src, msg):
+    dst = liblo.Address(src.get_hostname(), 9000)
+    liblo.send(dst, msg)
 
 class AMCPServer(liblo.ServerThread):
     def __init__(self, port):
         logger.debug('action="init_server", port="%s"' % port)
         liblo.ServerThread.__init__(self, port)
 
-    def make_local_toggle(func):
-        #def toggled(self, path, args, arg_type, src):
-        def toggled(*args):
-            func(*args[0:3])
-            s, path, args, arg_type, src, foo = args
-            assert (arg_type == 'f') or (arg_type == 'i')
-            dst = liblo.Address(src.get_hostname(), 9000)
-            liblo.send(dst, liblo.Message(path, args[0]))
-        return toggled
-
     @liblo.make_method('/1/water_rain_t', 'f')
-    @make_local_toggle
-    def water_rain(self, path, args):
+    def water_rain(self, path, args, arg_type, src):
+        send_response(src, liblo.Message(path, args[0]))
+        try:
+            rtype = {1.0:'rain', 0: ''}[args[0]]
+        except KeyError:
+            rtype = 'error'
+        send_response(src, liblo.Message('/1/rain_type', rtype))
         Water().rain(args[0])
+
+    @liblo.make_method('/1/its_raining_men', 'f')
+    def rain_men(self, path, args, arg_type, src):
+        send_response(src, liblo.Message('/1/rain_type', 'men'))
+        SoundEffects().its_raining_men()
 
     @liblo.make_method(None, None)
     def catch_all(self, path, args):
@@ -66,7 +69,6 @@ class AMCPServer(liblo.ServerThread):
             'water_make_it_rain': Water().make_it_rain,
             'sound_thunder': SoundEffects().thunder,
             'sound_rain': SoundEffects().rain,
-            'sound_its_raining_men': SoundEffects().its_raining_men,
             'light_lightning': Lighting().strobe
         }
         try:
