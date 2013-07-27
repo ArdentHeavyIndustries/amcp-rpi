@@ -185,7 +185,7 @@ class SoundOut():
 
 if (__name__ == "__main__"):
     try:
-        server = AMCPServer(1234)
+        server = AMCPServer(8000)
     except liblo.ServerError, err:
         print str(err)
         sys.exit()
