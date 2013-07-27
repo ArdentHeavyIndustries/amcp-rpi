@@ -28,3 +28,8 @@ class FastOPC(object):
                              0x00,  # Command
                              len(packedPixels))
         self.socket.send(header + packedPixels)
+
+    def setGlobalColorCorrection(self, gamma, r, g, b):
+        msg = json.dumps({'gamma': gamma, whitepoint:[r,g,b]})
+        self.socket.send(struct.pack(">BBHHH", 0, 0xFF, len(msg) + 4, 0x0001, 0x0001) + msg)
+
