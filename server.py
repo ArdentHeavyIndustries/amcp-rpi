@@ -42,6 +42,21 @@ class AMCPServer(liblo.ServerThread):
         logger.debug('action="init_server", port="%s"' % port)
         liblo.ServerThread.__init__(self, port)
 
+    def make_local_toggle(func):
+        #def toggled(self, path, args, arg_type, src):
+        def toggled(*args):
+            func(*args[0:3])
+            s, path, args, arg_type, src, foo = args
+            assert (arg_type == 'f') or (arg_type == 'i')
+            dst = liblo.Address(src.get_hostname(), 9000)
+            liblo.send(dst, liblo.Message(path, args[0]))
+        return toggled
+
+    @liblo.make_method('/1/water_rain_t', 'f')
+    @make_local_toggle
+    def water_rain(self, path, args):
+        Water().rain(args[0])
+
     @liblo.make_method(None, None)
     def catch_all(self, path, args):
         logger.debug('action="catch_all", path="%s", args="%s"' % (path, args))
