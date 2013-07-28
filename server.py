@@ -11,6 +11,7 @@ to Splunk the cloud.
 
 """
 import logging
+import os
 import platform
 import subprocess
 import sys
@@ -21,6 +22,7 @@ import liblo
 CONSOLE_LOG_LEVEL = logging.DEBUG
 FILE_LOG_LEVEL = logging.DEBUG
 LOG_FILE = 'amcpserver.log'
+MEDIA_DIRECTORY = 'media'
 
 
 # Setup all our logging. Timestamps will be in localtime.
@@ -157,11 +159,13 @@ class SoundEffects():
     """Play different sound effects.
 
     Probably want to index these sounds somehow? Config file?"""
+    def __init__(self):
+        self.so = SoundOut()
 
     def thunder(self, press):
-        sound_file = 'thunder.wav'
+        sound_file = os.path.join(MEDIA_DIRECTORY, 'thunder_hd.mp3')
         if press:
-            #SoundOut.play(sound_file)
+            self.so.play(sound_file)
             logger.info('action="play_sound", soundfile="%s"' % (sound_file))
 
     def rain(self, press):
@@ -179,14 +183,17 @@ class SoundEffects():
 
 class SoundOut():
     """mplayer to RPi audio out"""
+    def __init__(self):
+        my_system = platform.system()
+        logger.debug('action=init_soundout, system="%s"' % my_system)
+        if my_system == 'Darwin':  # OS X
+            self.player = '/usr/bin/afplay'
+        elif my_system == 'Linux':
+            self.player = '/usr/local/bin/mplayer'  # is this always correct?
 
     def play(self, soundfile):
         # play that funky soundfile
-        if platform.system() == 'Darwin':  # OS X
-            player = '/usr/bin/afplay'
-        elif platform.system() == 'Linux':
-            player = '/usr/local/bin/mplayer'  # is this always correct?
-        subprocess.Popen([player, soundfile])
+        subprocess.Popen([self.player, soundfile])
 
 
 if (__name__ == "__main__"):
