@@ -11,6 +11,8 @@ to Splunk the cloud.
 
 """
 import logging
+import platform
+import subprocess
 import sys
 import time
 
@@ -180,7 +182,11 @@ class SoundOut():
 
     def play(self, soundfile):
         # play that funky soundfile
-        pass
+        if platform.system() == 'Darwin':  # OS X
+            player = '/usr/bin/afplay'
+        elif platform.system() == 'Linux':
+            player = '/usr/local/bin/mplayer'  # is this always correct?
+        subprocess.Popen([player, soundfile])
 
 
 if (__name__ == "__main__"):
