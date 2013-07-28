@@ -162,23 +162,24 @@ class SoundEffects():
     def __init__(self):
         self.so = SoundOut()
 
+    def press_play(self, sound_file):
+        self.so.play(sound_file)
+        logger.info('action="play_sound", soundfile="%s"' % (sound_file))
+
     def thunder(self, press):
         sound_file = os.path.join(MEDIA_DIRECTORY, 'thunder_hd.mp3')
         if press:
-            self.so.play(sound_file)
-            logger.info('action="play_sound", soundfile="%s"' % (sound_file))
+            self.press_play(sound_file)
 
     def rain(self, press):
-        sound_file = 'rainsounds.wav'
+        sound_file = os.path.join(MEDIA_DIRECTORY, 'rainsounds.wav')
         if press:
-            #SoundOut.play(sound_file)
-            logger.info('action="play_sound", soundfile="%s"' % (sound_file))
+            self.press_play(sound_file)
 
     def its_raining_men(self, press):
-        sound_file = 'its_raining_men.wav'
+        sound_file = os.path.join(MEDIA_DIRECTORY, 'its_raining_men.wav')
         if press:
-            #SoundOut.play(sound_file)
-            logger.info('action="play_sound", soundfile="%s"' % (sound_file))
+            self.press_play(sound_file)
 
 
 class SoundOut():
