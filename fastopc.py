@@ -1,5 +1,11 @@
 """Stolen from https://github.com/mens-amplio/mens-amplio/blob/master/led/controller.py"""
 
+import json
+import numpy
+import os
+import socket
+import struct
+
 class FastOPC(object):
     """High-performance Open Pixel Control client, using Numeric Python.
        By default, assumes the OPC server is running on localhost. This may be overridden
@@ -30,6 +36,6 @@ class FastOPC(object):
         self.socket.send(header + packedPixels)
 
     def setGlobalColorCorrection(self, gamma, r, g, b):
-        msg = json.dumps({'gamma': gamma, whitepoint:[r,g,b]})
+        msg = json.dumps({'gamma': gamma, 'whitepoint':[r,g,b]})
         self.socket.send(struct.pack(">BBHHH", 0, 0xFF, len(msg) + 4, 0x0001, 0x0001) + msg)
 
