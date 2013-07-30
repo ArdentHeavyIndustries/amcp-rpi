@@ -1,0 +1,47 @@
+#! /bin/sh
+
+### BEGIN INIT INFO
+# Provides:		shairport
+# Default-Start:	2 3 4 5
+# Default-Stop:
+# Required-Start:	$network $local_fs avahi
+# Required-Stop:	$network $local_fs
+# Short-Description:	AirPlay music server
+### END INIT INFO
+
+set -e
+umask 022
+
+. /lib/lsb/init-functions
+
+SHAIRPORT_OPTS="-d -l /dev/null -P /var/run/shairport.pid"
+SHAIRPORT_NAME="The Cloud ☁"
+
+case "$1" in
+  start)
+	log_daemon_msg "Starting AirPlay server" "shairport" || true
+	if start-stop-daemon --start --quiet --oknodo --pidfile /var/run/shairport.pid --exec /usr/bin/shairport -- $SHAIRPORT_OPTS -a "$SHAIRPORT_NAME" 2>&1 > /dev/null; then
+	    log_end_msg 0 || true
+	else
+	    log_end_msg 1 || true
+	fi
+	;;
+  stop)
+	log_daemon_msg "Stopping AirPlay server" "shairport" || true
+	if start-stop-daemon --stop --quiet --oknodo --pidfile /var/run/shairport.pid; then
+	    log_end_msg 0 || true
+	else
+	    log_end_msg 1 || true
+	fi
+	;;
+
+  status)
+	status_of_proc -p /var/run/shairport.pid /usr/bin/shairport shairport && exit 0 || exit $?
+	;;
+
+  *)
+	log_action_msg "Usage: /etc/init.d/shairport {start|stop|status}" || true
+	exit 1
+esac
+
+exit 0

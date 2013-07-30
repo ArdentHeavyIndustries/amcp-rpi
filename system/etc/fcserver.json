@@ -1,0 +1,41 @@
+{
+    "listen": ["127.0.0.1", 7890],
+
+    "color": {
+        "gamma": 2.5,
+        "whitepoint": [1.0, 1.0, 1.0]
+    },
+
+    "devices": [
+        {
+            "type": "fadecandy",
+            "serial": "FFFFFFFFFFFF0015003A100D24404E45",
+            "map": [[ 0, 0, 0, 512 ]]
+        },
+        {
+            "type": "fadecandy",
+            "serial": "FFFFFFFFFFFF00060021200214134D44",
+            "map": [[ 0, 512, 0, 512 ]]
+        },
+        {
+            "type": "fadecandy",
+            "serial": "FFFFFFFFFFFF0021003B200314134D44",
+            "map": [[ 0, 1024, 0, 512 ]]
+        },
+        {
+            "type": "fadecandy",
+            "serial": "FFFFFFFFFFFF0046000E100A24404E45",
+            "map": [[ 0, 1536, 0, 512 ]]
+        },
+        {
+            "type": "fadecandy",
+            "serial": "FFFFFFFFFFFF002F0005100C24404E45",
+            "map": [[ 0, 2048, 0, 512 ]]
+        },
+        {
+            "type": "enttec",
+            "map": [
+            ]
+        }
+    ]
+}
