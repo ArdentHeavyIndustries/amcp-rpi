@@ -9,27 +9,27 @@
     "devices": [
         {
             "type": "fadecandy",
-            "serial": "FFFFFFFFFFFF0015003A100D24404E45",
+            "serial": "LXJNACKAPTQLQVMF",
             "map": [[ 0, 0, 0, 512 ]]
         },
         {
             "type": "fadecandy",
-            "serial": "FFFFFFFFFFFF00060021200214134D44",
+            "serial": "GTOIIANHPBMVYPWZ",
             "map": [[ 0, 512, 0, 512 ]]
         },
         {
             "type": "fadecandy",
-            "serial": "FFFFFFFFFFFF0021003B200314134D44",
+            "serial": "ELWQLXUWZPYTKTIB",
             "map": [[ 0, 1024, 0, 512 ]]
         },
         {
             "type": "fadecandy",
-            "serial": "FFFFFFFFFFFF0046000E100A24404E45",
+            "serial": "JRJPDFZLTVCPQLCP",
             "map": [[ 0, 1536, 0, 512 ]]
         },
         {
             "type": "fadecandy",
-            "serial": "FFFFFFFFFFFF002F0005100C24404E45",
+            "serial": "JZJZCONXXJOHSTCH",
             "map": [[ 0, 2048, 0, 512 ]]
         },
         {
