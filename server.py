@@ -44,26 +44,45 @@ logger.addHandler(ch)
 class AMCPServer(liblo.ServerThread):
     def __init__(self, port):
         logger.debug('action="init_server", port="%s"' % port)
+        self.sound_effects = SoundEffects()
         liblo.ServerThread.__init__(self, port)
 
     @liblo.make_method(None, None)
     def catch_all(self, path, args):
         logger.debug('action="catch_all", path="%s", args="%s"' % (path, args))
         p = path.split("/")
-        switch = {
-            'water_rain': Water().rain,
-            'water_make_it_rain': Water().make_it_rain,
-            'sound_thunder': SoundEffects().thunder,
-            'sound_rain': SoundEffects().rain,
-            'sound_its_raining_men': SoundEffects().its_raining_men,
-            'light_lightning': Lighting().strobe
-        }
+        system = p[1]
+        action = p[2]
+        logger.debug('action="catch_all", system="%s", action="%s"'
+                     % (system, action))
+        switch = {}
+        if system == 'water':
+            switch = {
+                'rain': Water().rain,
+                'make_it_rain': Water().make_it_rain,
+            }
+        elif system == 'sound':
+            switch = {
+                'thunder': self.sound_effects.thunder,
+                'rain': self.sound_effects.rain,
+                'its_raining_men': self.sound_effects.its_raining_men
+            }
+        elif system == 'light':
+            switch = {
+                'lightning': Lighting().strobe
+            }
+
         try:
-            switch[p[2]](*args)
+            if action:
+                # This is where we pass 1 or 0 to turn on or off
+                switch[action](*args)
+            else:
+                logger.debug('action="active_page", page="%s"' % system)
         except KeyError:
             logger.error(
-                'action="catch_all", path="%s", error="not found" args="%s"'
-                % (path, args))
+                'action="catch_all", path="%s", error="not found" args="%s", '
+                'system=%s, action=%s'
+                % (path, args, system, action))
 
     def whitepoint(self, path, args):
         value = args[0]
@@ -164,7 +183,8 @@ class SoundEffects():
 
     def press_play(self, sound_file):
         self.so.play(sound_file)
-        logger.info('action="play_sound", soundfile="%s"' % (sound_file))
+        logger.info('action="play_sound", soundfile="%s", pid=%s'
+                    % (sound_file, pid))
 
     def thunder(self, press):
         sound_file = os.path.join(MEDIA_DIRECTORY, 'thunder_hd.mp3')
@@ -172,12 +192,13 @@ class SoundEffects():
             self.press_play(sound_file)
 
     def rain(self, press):
-        sound_file = os.path.join(MEDIA_DIRECTORY, 'rainsounds.wav')
+        sound_file = os.path.join(MEDIA_DIRECTORY, 'rain.mp3')
         if press:
             self.press_play(sound_file)
 
     def its_raining_men(self, press):
-        sound_file = os.path.join(MEDIA_DIRECTORY, 'its_raining_men.wav')
+        # TODO(ed): We need to figure out how to kill this thread.
+        sound_file = os.path.join(MEDIA_DIRECTORY, 'its_raining_men.mp3')
         if press:
             self.press_play(sound_file)
 
