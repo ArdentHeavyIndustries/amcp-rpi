@@ -24,6 +24,9 @@ FILE_LOG_LEVEL = logging.DEBUG
 LOG_FILE = 'amcpserver.log'
 MEDIA_DIRECTORY = 'media'
 
+# Pins - Which GPIO pins correspond to what?
+WATER_PIN = 1
+
 
 # Setup all our logging. Timestamps will be in localtime.
 # TODO(ed): Figure out how to get the timezone offset in the log, or use UTC
@@ -42,9 +45,31 @@ logger.addHandler(ch)
 
 
 class AMCPServer(liblo.ServerThread):
+
     def __init__(self, port):
         logger.debug('action="init_server", port="%s"' % port)
         self.sound_effects = SoundEffects()
+        self.water = Water()
+        self.light = Lighting()
+
+        self.systems = {
+            'sound': {
+                'thunder': self.sound_effects.thunder,
+                'rain': self.sound_effects.rain,
+                'its_raining_men': self.sound_effects.its_raining_men,
+                'silence': self.sound_effects.silence
+            },
+
+            'light': {
+                'lightning': self.light.strobe
+            },
+
+            'water': {
+                'rain': self.water.rain,
+                'make_it_rain': self.water.make_it_rain,
+            }
+        }
+
         liblo.ServerThread.__init__(self, port)
 
     @liblo.make_method(None, None)
@@ -54,33 +79,14 @@ class AMCPServer(liblo.ServerThread):
         system = p[1]
         try:
             action = p[2]
-        except IndexError:
-            # No action, must be a page change
+        except IndexError:  # No action, must be a page change
             logger.debug('action="active_page", page="%s"' % system)
             return
         logger.debug('action="catch_all", system="%s", action="%s"'
                      % (system, action))
-        switch = {}
-        if system == 'water':
-            switch = {
-                'rain': Water().rain,
-                'make_it_rain': Water().make_it_rain,
-            }
-        elif system == 'sound':
-            switch = {
-                'thunder': self.sound_effects.thunder,
-                'rain': self.sound_effects.rain,
-                'its_raining_men': self.sound_effects.its_raining_men,
-                'silence': self.sound_effects.silence
-            }
-        elif system == 'light':
-            switch = {
-                'lightning': Lighting().strobe
-            }
 
         try:
-            # This is where we pass 1 or 0 to turn on or off
-            switch[action](*args)
+            self.systems[system][action](*args)
         except KeyError:
             logger.error(
                 'action="catch_all", path="%s", error="not found" args="%s", '
@@ -129,11 +135,17 @@ class Water():
         logger.debug('system="%s", action="rain", toggle="%s"'
                      % (self.system, toggle))
         if toggle:
-            logger.info('system="%s", action="rain", toggle="on"' % self.system)
+            pi.send(WATER_PIN, 1)
+            logger.info(
+                'system="%s", action="rain", pin="%s", toggle="on"'
+                % (self.system, WATER_PIN))
         else:
-            logger.info('system="%s", action="rain", toggle="off"' % self.system)
+            pi.send(WATER_PIN, 0)
+            logger.info(
+                'system="%s", action="rain", pin="%s", toggle="off"'
+                % (self.system, WATER_PIN))
 
-    def make_it_rain(self):
+    def make_it_rain(self, press):
         logger.info('system="%s", action="make_it_rain"' % self.system)
         self.rain(True)
         time.sleep(5000)
@@ -146,19 +158,9 @@ class Water():
         pass
 
     def rain_timer(self, length):
-        # PiGPIO.send(1, 1)
+        pi.send(1, 1)
         # sleep(length)
-        # PiGPIO.send(1,0)
-        pass
-
-
-class PiGPIO():
-    """Controls water (pumps and valves)"""
-
-    def send(self, pin_num, value):
-        """Send value (1/0) to pin_num"""
-        logger.debug('action="send_rpi_gpio", pin_number="%i", value="%i"'
-                     % (pin_num, value))
+        pi.send(1, 0)
         pass
 
 
@@ -238,7 +240,6 @@ class SoundOut():
         logger.debug('action="add_to_now_playing", now_playing="%s"'
                      % self.now_playing)
 
-
     def play(self, soundfile):
         # play that funky soundfile
         p = subprocess.Popen([self.player, soundfile])
@@ -255,6 +256,17 @@ class SoundOut():
         self.now_playing[pid].kill()
         logger.info('action="soundout_kill", pid="%s"' % pid)
 
+
+class PiGPIO():
+    """Controls water (pumps and valves)"""
+
+    def send(self, pin_num, value):
+        """Send value (1/0) to pin_num"""
+        logger.debug('action="send_rpi_gpio", pin_number="%i", value="%i"'
+                     % (pin_num, value))
+        pass
+
+pi = PiGPIO()
 
 if (__name__ == "__main__"):
     try:
