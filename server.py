@@ -65,7 +65,8 @@ class AMCPServer(liblo.ServerThread):
             switch = {
                 'thunder': self.sound_effects.thunder,
                 'rain': self.sound_effects.rain,
-                'its_raining_men': self.sound_effects.its_raining_men
+                'its_raining_men': self.sound_effects.its_raining_men,
+                'silence': self.sound_effects.silence
             }
         elif system == 'light':
             switch = {
@@ -183,8 +184,12 @@ class SoundEffects():
 
     def press_play(self, sound_file):
         self.so.play(sound_file)
-        logger.info('action="play_sound", soundfile="%s", pid=%s'
-                    % (sound_file, pid))
+        logger.info('action="play_sound", soundfile="%s"'
+                    % (sound_file))
+
+    def silence(self, press):
+        if press:
+            self.so.killall()
 
     def thunder(self, press):
         sound_file = os.path.join(MEDIA_DIRECTORY, 'thunder_hd.mp3')
@@ -208,14 +213,34 @@ class SoundOut():
     def __init__(self):
         my_system = platform.system()
         logger.debug('action=init_soundout, system="%s"' % my_system)
+        self.now_playing = {}
         if my_system == 'Darwin':  # OS X
             self.player = '/usr/bin/afplay'
         elif my_system == 'Linux':
             self.player = '/usr/local/bin/mplayer'  # is this always correct?
 
+    def add_to_now_playing(self, p):
+        logger.debug('action=add_to_now_playing, pid=%s' % p.pid)
+        self.now_playing[p.pid] = p
+        logger.debug('action=add_to_now_playing, now_playing=%s'
+                     % self.now_playing)
+
+
     def play(self, soundfile):
         # play that funky soundfile
-        subprocess.Popen([self.player, soundfile])
+        p = subprocess.Popen([self.player, soundfile])
+        self.add_to_now_playing(p)
+
+    def killall(self):
+        logger.debug('action=soundout_killall_activated, now_playing=%s'
+                     % self.now_playing)
+        for pid in self.now_playing:
+            self.kill(pid)
+
+    def kill(self, pid):
+        logger.debug('action=soundout_kill, pid=%s' % pid)
+        self.now_playing[pid].kill()
+        logger.info('action=soundout_kill, pid=%s' % pid)
 
 
 if (__name__ == "__main__"):
