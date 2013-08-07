@@ -100,7 +100,7 @@ const unsigned char SIMPLEX[][4] = {
 // Note the input to these functions is not radians
 // instead x = [0, 2] for r = [0, 2*PI]
 
-inline float fast_sin(float x)
+static inline float fast_sin(float x)
 {
     // Convert the input value to a range of -1 to 1
     // x = x * (1.0f / PI);
@@ -121,7 +121,7 @@ inline float fast_sin(float x)
     #endif
 }
 
-inline float fast_cos(float x)
+static inline float fast_cos(float x)
 {
     return fast_sin(x + 0.5f);
 }
@@ -130,7 +130,7 @@ inline float fast_cos(float x)
 #define F2 0.3660254037844386f  // 0.5 * (sqrt(3.0) - 1.0)
 #define G2 0.21132486540518713f // (3.0 - sqrt(3.0)) / 6.0
 
-inline float 
+static inline float 
 noise2(float x, float y) 
 {
   int i1, j1, I, J, c;
@@ -177,7 +177,7 @@ noise2(float x, float y)
 #define F3 (1.0f / 3.0f)
 #define G3 (1.0f / 6.0f)
 
-inline float 
+static inline float 
 noise3(float x, float y, float z) 
 {
   int c, o1[3], o2[3], g[4], I, J, K;
@@ -245,7 +245,7 @@ noise3(float x, float y, float z)
   return (noise[0] + noise[1] + noise[2] + noise[3]) * 32.0f;
 }
 
-inline float
+static inline float
 fbm_noise3(float x, float y, float z, int octaves, float persistence, float lacunarity) {
     float freq = 1.0f;
     float amp = 1.0f;
@@ -267,7 +267,7 @@ fbm_noise3(float x, float y, float z, int octaves, float persistence, float lacu
 #define F4 0.30901699437494745f /* (sqrt(5.0) - 1.0) / 4.0 */
 #define G4 0.1381966011250105f /* (5.0 - sqrt(5.0)) / 20.0 */
 
-inline float 
+static inline float 
 noise4(float x, float y, float z, float w) {
     float noise[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 
@@ -354,7 +354,7 @@ noise4(float x, float y, float z, float w) {
     return 27.0 * (noise[0] + noise[1] + noise[2] + noise[3] + noise[4]);
 }
 
-inline float
+static inline float
 fbm_noise4(float x, float y, float z, float w, int octaves, float persistence, float lacunarity) {
     float freq = 1.0f;
     float amp = 1.0f;
