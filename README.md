@@ -13,16 +13,16 @@ System Setup
 Building the Server
 -------------------
 
-The server is written in Python, but it includes C-language extension modules. Building it:
+The server is written in Python, but it includes C-language extension modules. For convenience, you can build it in-place:
 
-	$ ./setup.py build
+	$ ./setup.py build --build-platlib=.
 	running build
 	running build_py
 	running build_ext
 
 Running it:
 
-	$ python build/lib*/server.py
+	$ ./server.py
 	2013-08-07 14:40:56,536 - amcpserver - DEBUG - action="init_server", port="8000"
 	2013-08-07 14:40:56,540 - amcpserver - DEBUG - action="init_soundout", system="Darwin"
 	press enter to quit...

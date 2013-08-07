@@ -1,4 +1,6 @@
 *.py[cod]
 *.log
+*.so
+*.dylib
 build
 

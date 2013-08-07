@@ -1,7 +1,8 @@
+#!/usr/bin/env python
+
 """The Server Which Runs The Cloud
 
-This is the python server that sits in between TouchOSC and what is currently
-fadecandy (https://github.com/scanlime/fadecandy)
+This is the python server that sits in between TouchOSC and the cloud hardware.
 
 @author: Ed, Samson, April
 
