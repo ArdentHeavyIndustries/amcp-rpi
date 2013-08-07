@@ -52,7 +52,12 @@ class AMCPServer(liblo.ServerThread):
         logger.debug('action="catch_all", path="%s", args="%s"' % (path, args))
         p = path.split("/")
         system = p[1]
-        action = p[2]
+        try:
+            action = p[2]
+        except IndexError:
+            # No action, must be a page change
+            logger.debug('action="active_page", page="%s"' % system)
+            return
         logger.debug('action="catch_all", system="%s", action="%s"'
                      % (system, action))
         switch = {}
@@ -74,15 +79,12 @@ class AMCPServer(liblo.ServerThread):
             }
 
         try:
-            if action:
-                # This is where we pass 1 or 0 to turn on or off
-                switch[action](*args)
-            else:
-                logger.debug('action="active_page", page="%s"' % system)
+            # This is where we pass 1 or 0 to turn on or off
+            switch[action](*args)
         except KeyError:
             logger.error(
                 'action="catch_all", path="%s", error="not found" args="%s", '
-                'system=%s, action=%s'
+                'system="%s", action=%s'
                 % (path, args, system, action))
 
     def whitepoint(self, path, args):
@@ -120,15 +122,19 @@ class AMCPServer(liblo.ServerThread):
 class Water():
     """Controls rain, mist, etc"""
 
+    def __init__(self):
+        self.system = 'water'
+
     def rain(self, toggle):
-        logger.debug('action="rain", toggle="%s"' % toggle)
+        logger.debug('system="%s", action="rain", toggle="%s"'
+                     % (self.system, toggle))
         if toggle:
-            logger.info('action="rain", toggle="on"')
+            logger.info('system="%s", action="rain", toggle="on"' % self.system)
         else:
-            logger.info('action="rain", toggle="off"')
+            logger.info('system="%s", action="rain", toggle="off"' % self.system)
 
     def make_it_rain(self):
-        logger.info('action="make_it_rain"')
+        logger.info('system="%s", action="make_it_rain"' % self.system)
         self.rain(True)
         time.sleep(5000)
         self.rain(False)
@@ -136,7 +142,7 @@ class Water():
 
     def all_the_rain(self):
         # PiGPIO.send(1,1)
-        logger.info('action="all_the_rain"')
+        logger.info('system="%s", action="all_the_rain"' % self.system)
         pass
 
     def rain_timer(self, length):
@@ -158,8 +164,14 @@ class PiGPIO():
 
 class Lighting():
     """Should be able to translate something into appropriate index for OPC"""
-    def strobe(self):
+
+    def __init__(self):
+        self.system = 'light'
+
+    def strobe(self, press):
         # quick strobe
+        if press:
+            logger.info('system="%s", action=strobe' % (self.system))
         pass
 
     def flood_lights(self, light_num, intensity):
@@ -180,12 +192,13 @@ class SoundEffects():
 
     Probably want to index these sounds somehow? Config file?"""
     def __init__(self):
+        self.system = 'sound'
         self.so = SoundOut()
 
     def press_play(self, sound_file):
         self.so.play(sound_file)
-        logger.info('action="play_sound", soundfile="%s"'
-                    % (sound_file))
+        logger.info('system="%s", action="play_sound", soundfile="%s"'
+                    % (self.system, sound_file))
 
     def silence(self, press):
         if press:
@@ -212,7 +225,7 @@ class SoundOut():
     """mplayer to RPi audio out"""
     def __init__(self):
         my_system = platform.system()
-        logger.debug('action=init_soundout, system="%s"' % my_system)
+        logger.debug('action="init_soundout", system="%s"' % my_system)
         self.now_playing = {}
         if my_system == 'Darwin':  # OS X
             self.player = '/usr/bin/afplay'
@@ -220,9 +233,9 @@ class SoundOut():
             self.player = '/usr/local/bin/mplayer'  # is this always correct?
 
     def add_to_now_playing(self, p):
-        logger.debug('action=add_to_now_playing, pid=%s' % p.pid)
+        logger.debug('action="add_to_now_playing", pid="%s"' % p.pid)
         self.now_playing[p.pid] = p
-        logger.debug('action=add_to_now_playing, now_playing=%s'
+        logger.debug('action="add_to_now_playing", now_playing="%s"'
                      % self.now_playing)
 
 
@@ -232,15 +245,15 @@ class SoundOut():
         self.add_to_now_playing(p)
 
     def killall(self):
-        logger.debug('action=soundout_killall_activated, now_playing=%s'
+        logger.debug('action="soundout_killall_activated", now_playing="%s"'
                      % self.now_playing)
         for pid in self.now_playing:
             self.kill(pid)
 
     def kill(self, pid):
-        logger.debug('action=soundout_kill, pid=%s' % pid)
+        logger.debug('action="soundout_kill", pid="%s"' % pid)
         self.now_playing[pid].kill()
-        logger.info('action=soundout_kill, pid=%s' % pid)
+        logger.info('action="soundout_kill", pid="%s"' % pid)
 
 
 if (__name__ == "__main__"):
