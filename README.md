@@ -10,6 +10,23 @@ System Setup
 * Use rpi-update to install the latest firmware
 * Install extras with system/install.sh
 
+Building the Server
+-------------------
+
+The server is written in Python, but it includes C-language extension modules. Building it:
+
+	$ ./setup.py build
+	running build
+	running build_py
+	running build_ext
+
+Running it:
+
+	$ python build/lib*/server.py
+	2013-08-07 14:40:56,536 - amcpserver - DEBUG - action="init_server", port="8000"
+	2013-08-07 14:40:56,540 - amcpserver - DEBUG - action="init_soundout", system="Darwin"
+	press enter to quit...
+
 Shairport
 ---------
 
