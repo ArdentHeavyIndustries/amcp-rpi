@@ -152,10 +152,11 @@ class LightController(object):
        calculates pixel values and streams them to the Open Pixel Control server.
        """
 
-    def __init__(self, layout="layout/amcp-leds.json", server=None, targetFPS=30, maxLightning=10):
+    def __init__(self, layout="layout/amcp-leds.json", server=None, targetFPS=30, maxLightning=10, showFPS=False):
         self.model = Model(layout)
         self.opc = fastopc.FastOPC(server)
         self.targetFPS = targetFPS
+        self.showFPS = showFPS
         self.time = time.time()
 
         # Current translation vector
@@ -218,7 +219,7 @@ class LightController(object):
         # Log frame rate
 
         self._fpsFrames += 1
-        if now > self._fpsTime + self._fpsLogPeriod:
+        if self.showFPS and now > self._fpsTime + self._fpsLogPeriod:
             fps = self._fpsFrames / (now - self._fpsTime)
             self._fpsTime = now
             self._fpsFrames = 0
