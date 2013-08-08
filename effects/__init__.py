@@ -52,17 +52,50 @@ class LightParameters(object):
     """Container for parameters that are intended to be tweaked by the performer, via OSC."""
 
     # How much detail is visible (scale factor)
-    detail = 1.0
+    detail = 0.8
 
     # How fast the cloud shape changes over time. 0 == perfectly still.
-    turbulence = 0
+    turbulence = 0.4
 
     # Wind heading, in degrees, and wind speed in meters per second.
     wind_heading = 0
-    wind_speed = 0
+    wind_speed = 0.8
 
     # Z-axis rotation angle for the whole cloud, in degrees
     rotation = 0
+
+    # Color temperature, in Kelvin
+    temperature = 6000
+
+    # Brightness and contrast for the cloud effect itself. Contrast is given
+    # as a proportion of the total effect brightness.
+    brightness = 0.3
+    contrast = 0.9
+
+
+def temperatureToRGB(kelvin):
+    """Approximation for RGB value given a color temperature in Kelvin.
+       Returns 3-element NumPy array of floats in the range [0,1].
+
+       This uses the non-table-driven approximation from:
+       http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
+       """
+
+    t = kelvin / 100.0
+
+    if t <= 66:
+        r = 1.0
+        g = 0.3900815787690196 * math.log(t) - 0.6318414437886275
+        if t <= 19:
+            b = 0.0
+        else:
+            b = 0.543206789110196 * math.log(t - 10) - 1.19625408914
+    else:
+        r = 1.292936186062745 * math.pow(t - 60, -0.1332047592)
+        g = 1.129890860895294 * math.pow(t - 60, -0.0755148492)
+        b = 1.0
+
+    return numpy.clip([r,g,b], 0.0, 1.0)
 
 
 class LightController(object):
@@ -138,23 +171,19 @@ class LightController(object):
 
         return dt
 
-    def _drawFrame(self, dt):
-
-        # Our "detail" setting is actually a zoom factor used when translating
-        # between model coordiantes (meters) and noise coordinates (arbitrary mod-1024)
-
-        z = self.params.detail
-
+    def _updateTranslation(self, dt):
         # Update translations according to delta-T.
         # If our heading changes, that only applies to current and future
         # wind motion. Translation changes must take into account zoom,
         # since translations are in noise-space rather than model-space.
 
+        dtz = dt * self.params.detail
         a = math.radians(self.params.wind_heading)
-        self.translation[0] += math.cos(a) * self.params.wind_speed * dt * z
-        self.translation[1] += math.sin(a) * self.params.wind_speed * dt * z
-        self.translation[3] += self.params.turbulence * dt * z
+        self.translation[0] += math.cos(a) * self.params.wind_speed * dtz
+        self.translation[1] += math.sin(a) * self.params.wind_speed * dtz
+        self.translation[3] += self.params.turbulence * dtz
 
+    def _makeCloudMatrix(self):
         # Assemble a matrix with Z-axis euler rotation, scaling by our 'detail'
         # factor, and translation by our stored 4-vector.
         # 
@@ -163,20 +192,33 @@ class LightController(object):
         # potentially-large translations are cast to single-precision float
         # in our native code module.
 
+        z = self.params.detail
         t = numpy.fmod(self.translation, 1024.0)
         a = math.radians(self.params.rotation)
         s = z * math.sin(a)
         c = z * math.cos(a)
 
-        matrix = [ c,      -s,    0,    0,
-                   s,       c,    0,    0,
-                   0,       0,    z,    0,
-                   t[0], t[1], t[2], t[3] ]
+        return [ c,      -s,    0,    0,
+                 s,       c,    0,    0,
+                 0,       0,    z,    0,
+                 t[0], t[1], t[2], t[3] ]
 
-        # XXX todo
-        baseColor = [0.5,0.5,0.5]
-        noiseColor = [0.5,0.5,0.5]
-        lightning = []
+    def _makeLightning(self, dt):
+        # Calculate lightning parameters for this frame
+        # TODO
+
+        return []
+
+    def _drawFrame(self, dt):
+        self._updateTranslation(dt)
+        matrix = self._makeCloudMatrix()
+        lightning = self._makeLightning(dt)
+
+        # Calculate the white point for our cloud effect, based on the given color temperature,
+        # and calculate other colors based on brightness and contrast settings.
+        white = temperatureToRGB(self.params.temperature)
+        baseColor = white * self.params.brightness
+        noiseColor = baseColor * self.params.contrast
 
         # Calculate our main cloud effect (Native code)
         cloudPixels = cloud.render(self.model.packed, matrix, baseColor, noiseColor, lightning)
