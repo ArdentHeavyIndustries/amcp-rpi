@@ -25,6 +25,7 @@ import sys
 import numpy
 import json
 import math
+import random
 
 import cloud
 import fastopc
@@ -44,6 +45,10 @@ class Model(object):
         # Points, as a NumPy array
         self.points = numpy.array([x['point'] for x in self.graphData])
 
+        # Axis-aligned bounding box
+        self.pointMin = numpy.min(self.points, axis=0)
+        self.pointMax = numpy.max(self.points, axis=0)
+
         # Packed buffer, ready to pass to our native code
         self.packed = self.points.astype(numpy.float32).tostring()
 
@@ -59,18 +64,30 @@ class LightParameters(object):
 
     # Wind heading, in degrees, and wind speed in meters per second.
     wind_heading = 0
-    wind_speed = 0.8
+    wind_speed = 0.2
 
     # Z-axis rotation angle for the whole cloud, in degrees
     rotation = 0
 
     # Color temperature, in Kelvin
-    temperature = 6000
+    temperature = 6800
 
     # Brightness and contrast for the cloud effect itself. Contrast is given
     # as a proportion of the total effect brightness.
     brightness = 0.3
     contrast = 0.9
+
+    # Probability for generating lightning when no existing lightning is happening.
+    # This is the main knob for adjusting how much of a lightning storm we're in.
+    # Lightning is completely disabled if this is zero, and lightning is continuous
+    # if it's 1.
+    lightning_new = 0.01
+
+    # Probability for an existing lightning bolt chaining to a nearby location.
+    # If this is lower than lightning_new, lightning bolts will never chain.
+    # This will end up controlling how much the lightning moves around inside the
+    # cloud once it's already started.
+    lightning_chain = 0.1
 
 
 def temperatureToRGB(kelvin):
@@ -98,12 +115,44 @@ def temperatureToRGB(kelvin):
     return numpy.clip([r,g,b], 0.0, 1.0)
 
 
+class LightningBolt(object):
+    """A single in-cloud lightning bolt."""
+
+    def __init__(self, position):
+        self.position = position
+
+        # Shape of this bolt
+        self.strength = abs(random.gauss(0.5, 0.2))
+        self.falloff = random.uniform(2.0, 5.0)
+
+        # Timeline
+        self.fadeDuration = abs(random.gauss(0.1, 0.2))
+        self.flickerDuration = abs(random.gauss(0.1, 0.5))
+        self.lifetime = self.fadeDuration + self.flickerDuration
+
+    def render(self):
+        # Return the 7-tuple used by our native code to render this bolt.
+
+        # Bolts have two phases: A main "flickering" phase, and a fading phase.
+        if self.lifetime <= self.fadeDuration:
+            # Fading
+            luma = self.lifetime * self.strength / self.fadeDuration
+        else:
+            # Flickering
+            luma = random.gauss(self.strength, 0.05)
+
+        # Bolts are all plain white for now
+        color = [luma] * 3
+
+        return self.position + color + [self.falloff]
+
+
 class LightController(object):
     """Light effect controller. Stores effect parameters, and runs our main loop which
        calculates pixel values and streams them to the Open Pixel Control server.
        """
 
-    def __init__(self, layout="layout/amcp-leds.json", server=None, targetFPS=59.9):
+    def __init__(self, layout="layout/amcp-leds.json", server=None, targetFPS=45, maxLightning=10):
         self.model = Model(layout)
         self.opc = fastopc.FastOPC(server)
         self.targetFPS = targetFPS
@@ -117,6 +166,10 @@ class LightController(object):
 
         # Array with state of DMX devices. (TODO)
         self.dmx = numpy.zeros((1, 3), numpy.uint8)
+
+        # Array of live lightning bolt objects
+        self.lightning = []
+        self.maxLightning = maxLightning
 
         self._fpsFrames = 0
         self._fpsTime = 0
@@ -150,6 +203,7 @@ class LightController(object):
             # skipping badly. Jump immediately to the current time and don't look back.
 
             self.time = now
+            animationDt = dt
 
         else:
             # We're approximately keeping up with our ideal frame rate. Advance our animation
@@ -157,6 +211,7 @@ class LightController(object):
             # animation clock with the real-time clock.
 
             self.time += dtIdeal
+            animationDt = dtIdeal
             if dt < dtIdeal:
                 time.sleep(dtIdeal - dt)
 
@@ -169,7 +224,7 @@ class LightController(object):
             self._fpsFrames = 0
             sys.stderr.write("%7.2f FPS\n" % fps)
 
-        return dt
+        return animationDt
 
     def _updateTranslation(self, dt):
         # Update translations according to delta-T.
@@ -203,16 +258,53 @@ class LightController(object):
                  0,       0,    z,    0,
                  t[0], t[1], t[2], t[3] ]
 
-    def _makeLightning(self, dt):
+    def _updateLightning(self, dt):
         # Calculate lightning parameters for this frame
-        # TODO
 
-        return []
+        if len(self.lightning) < self.maxLightning:
+            # We're below our limit for number of lightning bolts.
+            # (Our renderer can handle any number, but we want to put a cap on this
+            # to avoid an unbounded explosion in processing power required.)
+
+            r = random.random()
+            if r < self.params.lightning_new:
+                # Brand new lightning bolt. Put it at a random place in our model.
+
+                self.lightning.append(LightningBolt([
+                    random.uniform( self.model.pointMin[i], self.model.pointMax[i] )
+                    for i in range(3)
+                    ]))
+
+            elif r < self.params.lightning_chain and self.lightning:
+                # Chain from an existing lightning bolt. Use that bolt
+                # as the center of a normal distribution.
+
+                parent = random.choice(self.lightning)
+                self.lightning.append(LightningBolt([
+                    random.gauss( parent.position[i], 0.5 )
+                    for i in range(3)
+                    ]))
+
+        # Render lightning bolts, and remove any that are expired
+
+        expired = []
+        rendered = []
+        for lightning in self.lightning:
+            lightning.lifetime -= dt
+            if lightning.lifetime < 0:
+                expired.append(lightning)
+            else:
+                rendered.append(lightning.render())
+
+        for lightning in expired:
+            self.lightning.remove(lightning)
+
+        return rendered
 
     def _drawFrame(self, dt):
         self._updateTranslation(dt)
         matrix = self._makeCloudMatrix()
-        lightning = self._makeLightning(dt)
+        lightning = self._updateLightning(dt)
 
         # Calculate the white point for our cloud effect, based on the given color temperature,
         # and calculate other colors based on brightness and contrast settings.
