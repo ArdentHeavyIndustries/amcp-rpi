@@ -25,6 +25,21 @@ leds = [None] * (numControllers * channelsPerController * ledsPerChannel)
 def inches(i):
 	return i * (2.54 / 100.0)
 
+# Platform dimensions
+pHeight = inches(42)
+pWidth = inches(90)
+pDepth = inches(48)
+pBackGapWidth = inches(72)
+
+# Coordinate system:
+#   X+, to the right of the platform
+#   Y+, to the back side (VR side) of the platform
+#   Z+, up
+#
+# Origin at front bottom left corner, in the arguments to strip().
+# This is adjusted to be at the center of the platform when we write out
+# the JSON.
+
 # Place the LEDs on one strip or partial strip, starting at (x,y,z)
 # and extending in the direction (xd,yd,zd).
 def strip(controller, channel, (x, y, z), (xd, yd, zd), first=0, count=ledsPerChannel):
@@ -34,6 +49,11 @@ def strip(controller, channel, (x, y, z), (xd, yd, zd), first=0, count=ledsPerCh
 	xd *= n
 	yd *= n
 	zd *= n
+
+	# Center everything
+	x -= pWidth/2
+	y -= pDepth/2
+	z -= pHeight/2
 
 	# Calculate LED index
 	index = (controller * channelsPerController + channel) * ledsPerChannel + first
@@ -55,18 +75,6 @@ def bentStrip(controller, channel, origin, direction1, direction2, length1):
 
 	strip(controller, channel, origin, direction1, 0, ledCount1)
 	strip(controller, channel, corner, direction2, ledCount1, ledsPerChannel - ledCount1)
-
-# Platform dimensions
-pHeight = inches(42)
-pWidth = inches(90)
-pDepth = inches(48)
-pBackGapWidth = inches(72)
-
-# Coordinate system:
-#   X+, to the right of the platform
-#   Y+, to the back side (VR side) of the platform
-#   Z+, up
-# Origin at front bottom left corner.
 
 #### Bottom side, controllers 0 & 1
 #
