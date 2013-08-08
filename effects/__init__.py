@@ -152,7 +152,7 @@ class LightController(object):
        calculates pixel values and streams them to the Open Pixel Control server.
        """
 
-    def __init__(self, layout="layout/amcp-leds.json", server=None, targetFPS=45, maxLightning=10):
+    def __init__(self, layout="layout/amcp-leds.json", server=None, targetFPS=30, maxLightning=10):
         self.model = Model(layout)
         self.opc = fastopc.FastOPC(server)
         self.targetFPS = targetFPS
