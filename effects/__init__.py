@@ -48,6 +48,23 @@ class Model(object):
         self.packed = self.points.astype(numpy.float32).tostring()
 
 
+class LightParameters(object):
+    """Container for parameters that are intended to be tweaked by the performer, via OSC."""
+
+    # How much detail is visible (scale factor)
+    detail = 1.0
+
+    # How fast the cloud shape changes over time. 0 == perfectly still.
+    turbulence = 0
+
+    # Wind heading, in degrees, and wind speed in meters per second.
+    wind_heading = 0
+    wind_speed = 0
+
+    # Z-axis rotation angle for the whole cloud, in degrees
+    rotation = 0
+
+
 class LightController(object):
     """Light effect controller. Stores effect parameters, and runs our main loop which
        calculates pixel values and streams them to the Open Pixel Control server.
@@ -58,6 +75,12 @@ class LightController(object):
         self.opc = fastopc.FastOPC(server)
         self.targetFPS = targetFPS
         self.time = time.time()
+
+        # Current translation vector
+        self.translation = [0,0,0,0]
+
+        # Parameters, intended to be modified by the server code
+        self.params = LightParameters()
 
         # Array with state of DMX devices. (TODO)
         self.dmx = numpy.zeros((1, 3), numpy.uint8)
@@ -70,11 +93,11 @@ class LightController(object):
         """Main rendering loop. Calls runFrame(), keeps track of frames per second."""
 
         while True:
-            self._advanceTime()
-            self._drawFrame()
+            self._drawFrame(self._advanceTime())
 
     def _advanceTime(self):
         """Update our virtual clock (self.time)
+           Returns the time delta (dt)
 
            This is where we enforce our target frame rate, by sleeping until the minimum amount
            of time has elapsed since the previous frame. We try to synchronize our actual frame
@@ -113,14 +136,42 @@ class LightController(object):
             self._fpsFrames = 0
             sys.stderr.write("%7.2f FPS\n" % fps)
 
-    def _drawFrame(self):
+        return dt
 
-        # XXX todo
-        w = math.fmod(self.time, 1024)
-        matrix = [1,0,0,0,
-                  0,1,0,0,
-                  0,0,1,0,
-                  0,0,0,w]
+    def _drawFrame(self, dt):
+
+        # Our "detail" setting is actually a zoom factor used when translating
+        # between model coordiantes (meters) and noise coordinates (arbitrary mod-1024)
+
+        z = self.params.detail
+
+        # Update translations according to delta-T.
+        # If our heading changes, that only applies to current and future
+        # wind motion. Translation changes must take into account zoom,
+        # since translations are in noise-space rather than model-space.
+
+        a = math.radians(self.params.wind_heading)
+        self.translation[0] += math.cos(a) * self.params.wind_speed * dt * z
+        self.translation[1] += math.sin(a) * self.params.wind_speed * dt * z
+        self.translation[3] += self.params.turbulence * dt * z
+
+        # Assemble a matrix with Z-axis euler rotation, scaling by our 'detail'
+        # factor, and translation by our stored 4-vector.
+        # 
+        # The noise field wraps at 1024 units, so we take
+        # the translation to be modulo-1024 to prevent problems when our
+        # potentially-large translations are cast to single-precision float
+        # in our native code module.
+
+        t = numpy.fmod(self.translation, 1024.0)
+        a = math.radians(self.params.rotation)
+        s = z * math.sin(a)
+        c = z * math.cos(a)
+
+        matrix = [ c,      -s,    0,    0,
+                   s,       c,    0,    0,
+                   0,       0,    z,    0,
+                   t[0], t[1], t[2], t[3] ]
 
         # XXX todo
         baseColor = [0.5,0.5,0.5]
