@@ -18,6 +18,7 @@ import subprocess
 import sys
 import time
 
+import effects
 import liblo
 
 CONSOLE_LOG_LEVEL = logging.DEBUG
@@ -166,10 +167,13 @@ class Water():
 
 
 class Lighting():
-    """Should be able to translate something into appropriate index for OPC"""
+    """High-level interface to the lighting effects subsystem.
+       Rendering is handled by effects.LightController().
+       """
 
     def __init__(self):
         self.system = 'light'
+        self.controller = effects.LightController()
 
     def strobe(self, press):
         # quick strobe
@@ -181,13 +185,8 @@ class Lighting():
         # Turn on light_num at intensity
         pass
 
-
-class OPC():
-    """Controls all the lights! LED, lightning, etc."""
-    def send(self, index, r, g, b):
-        """ Send r, g, b to index LED
-        """
-        pass
+    def renderingThread(self):
+        self.controller.run()
 
 
 class SoundEffects():
@@ -277,6 +276,9 @@ if (__name__ == "__main__"):
         sys.exit()
 
     server.start()
-    # TODO(ed): Pausing for input seems like a janky way to run a server
-    raw_input("press enter to quit...\n")
-    logger.debug('action="server_shutdown"')
+
+    # Main thread turns into our LED effects thread. Runs until killed.
+    try:
+        server.light.renderingThread()
+    finally:
+        logger.debug('action="server_shutdown"')

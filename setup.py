@@ -5,7 +5,7 @@ from distutils.core import setup, Extension
 setup(
     packages=['effects'],
     py_modules=[
-    	'server', 'fastopc',
+    	'server',
     ],
 	ext_modules=[
 		Extension('effects.cloud', ['effects/cloud.c'], 
