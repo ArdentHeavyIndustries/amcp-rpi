@@ -50,6 +50,7 @@ class FastOPC(object):
             try:
                 self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.socket.connect((self.host, self.port))
+                self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
             except socket.error:
                 self.socket = None
 
