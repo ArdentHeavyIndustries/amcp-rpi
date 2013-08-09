@@ -181,7 +181,7 @@ class Lighting():
         """ Light up cloud for as long as button is held. """
         if press:
             logger.info('system="%s", action=strobe' % (self.system))
-        self.controller.params.lightning_new = max(self.controller.params.lightning_new, press)
+        self.controller.params.lightning_new = press
 
     def flood_lights(self, light_num, intensity):
         # Turn on light_num at intensity
