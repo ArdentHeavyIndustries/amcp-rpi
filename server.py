@@ -19,6 +19,7 @@ import subprocess
 import sys
 import time
 
+from avahi_announce import ZeroconfService
 import effects
 import liblo
 
@@ -265,8 +266,8 @@ class SoundEffects():
             os.path.join(MEDIA_DIRECTORY, 'smb', 'smb*'))
         self.so = SoundOut()
 
-    def press_play(self, sound_file):
-        self.so.play(sound_file)
+    def press_play(self, sound_file, seek=0, duration=0):
+        self.so.play(sound_file, seek, duration)
         logger.info('system="%s", action="play_sound", soundfile="%s"'
                     % (self.system, sound_file))
 
@@ -288,7 +289,7 @@ class SoundEffects():
         # TODO(ed): We need to figure out how to kill this thread.
         sound_file = os.path.join(MEDIA_DIRECTORY, 'its_raining_men.mp3')
         if press:
-            self.press_play(sound_file)
+            self.press_play(sound_file, seek='1:13.5', duration='3.36')
 
     def smb_sounds(self, x=None, y=None, press=None):
         if press:
@@ -315,9 +316,17 @@ class SoundOut():
         logger.debug('action="add_to_now_playing", now_playing="%s"'
                      % self.now_playing)
 
-    def play(self, soundfile):
+    def play(self, soundfile, seek=0, duration=0):
         # play that funky soundfile
-        p = subprocess.Popen([self.player, soundfile])
+        extra_args = []
+        if seek:
+            extra_args.append('-ss')
+            extra_args.append(seek)
+        if duration:
+            extra_args.append('-endpos')
+            extra_args.append(duration)
+        p = subprocess.Popen([self.player, soundfile] + extra_args)
+        print p
         self.add_to_now_playing(p)
 
     def killall(self):
@@ -352,8 +361,13 @@ if (__name__ == "__main__"):
 
     server.start()
 
+    # Avahi announce so it's findable on the controller by name
+    service = ZeroconfService(name="AMCP TouchOSC Server", port=8000, stype="_osc._udp")
+
+    service.publish()
     # Main thread turns into our LED effects thread. Runs until killed.
     try:
         server.light.renderingThread()
     finally:
         logger.debug('action="server_shutdown"')
+        service.unpublish()
