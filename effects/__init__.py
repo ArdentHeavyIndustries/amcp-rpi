@@ -259,6 +259,9 @@ class LightController(object):
                  0,       0,    z,    0,
                  t[0], t[1], t[2], t[3] ]
 
+    def makeLightningBolt(self, x, y, z=0):
+        self.lightning.append(LightningBolt([x, y, z]))
+
     def _updateLightning(self, dt):
         # Calculate lightning parameters for this frame
 

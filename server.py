@@ -63,7 +63,9 @@ class AMCPServer(liblo.ServerThread):
             },
 
             'light': {
-                'lightning': self.light.strobe
+                'lightning': self.light.strobe,
+                'cloud_z': self.light.cloud_z,
+                'cloud_xy': self.light.cloud_xy,
             },
 
             'water': {
@@ -176,10 +178,10 @@ class Lighting():
         self.controller = effects.LightController()
 
     def strobe(self, press):
-        # quick strobe
+        """ Light up cloud for as long as button is held. """
         if press:
             logger.info('system="%s", action=strobe' % (self.system))
-        pass
+        self.controller.params.lightning_new = max(self.controller.params.lightning_new, press)
 
     def flood_lights(self, light_num, intensity):
         # Turn on light_num at intensity
@@ -188,6 +190,15 @@ class Lighting():
     def renderingThread(self):
         self.controller.run()
 
+    def cloud_xy(self, x, y):
+        """ Light up cloud at given XY coordinate. """
+        self.controller.makeLightningBolt(x*-1, y*-1)
+
+    def cloud_z(self, z):
+        """ Change the new lighting percentage value.
+        Wants to be non-linear curve, but this will suffice for now.
+        """
+        self.controller.params.lightning_new = z
 
 class SoundEffects():
     """Play different sound effects.
