@@ -68,6 +68,16 @@ class AMCPServer(liblo.ServerThread):
                 'cloud_xy': self.light.cloud_xy,
             },
 
+            'light2': {
+                'brightness': self.light.brightness,
+                'contrast': self.light.contrast,
+                'detail': self.light.detail,
+                'colortemp': self.light.colortemp,
+                'turbulence': self.light.turbulence,
+                'speed': self.light.speed,
+                'heading_rotation': self.light.heading_rotation,
+            },
+
             'water': {
                 'rain': self.water.rain,
                 'make_it_rain': self.water.make_it_rain,
@@ -192,6 +202,7 @@ class Lighting():
 
     def cloud_xy(self, x, y):
         """ Light up cloud at given XY coordinate. """
+        logger.debug('action="lightning Bolt!" x="%s" y="%s"' % (x, y))
         self.controller.makeLightningBolt(x*-1, y*-1)
 
     def cloud_z(self, z):
@@ -199,6 +210,37 @@ class Lighting():
         Wants to be non-linear curve, but this will suffice for now.
         """
         self.controller.params.lightning_new = z
+        logger.debug('action="lightning percent" z="%s"' % (z))
+
+    def brightness(self, bright):
+        self.controller.params.brightness = bright
+        logger.debug('action="lightning brightness" bright="%s"' % (bright))
+
+    def contrast(self, contrast):
+        self.controller.params.contrast = contrast
+        logger.debug('action="lightning contrast" contrast="%s"' % (contrast))
+
+    def detail(self, detail):
+        self.controller.params.detail = detail
+        logger.debug('action="lightning contrast" detail="%s"' % (detail))
+
+    def colortemp(self, colortemp):
+        self.controller.params.colortemp = colortemp * 10000
+        logger.debug('action="lightning contrast" colortemp="%s"' % (colortemp))
+
+    def turbulence(self, turbulence):
+        self.controller.params.turbulence
+        logger.debug('action="lightning contrast" turbulence="%s"' % (turbulence))
+
+    def speed(self, speed):
+        self.controller.params.wind_speed = speed
+        logger.debug('action="lightning contrast" speed="%s"' % (speed))
+
+    def heading_rotation(self, x, y):
+        self.controller.params.wind_heading = x
+        self.controller.params.rotation = y
+        logger.debug('action="lightning contrast" heading="%s" rotation="%s"' % (x, y))
+
 
 class SoundEffects():
     """Play different sound effects.
