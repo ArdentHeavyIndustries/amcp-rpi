@@ -250,8 +250,8 @@ class SoundEffects():
         self.system = 'sound'
         self.so = SoundOut()
 
-    def press_play(self, sound_file):
-        self.so.play(sound_file)
+    def press_play(self, sound_file, seek=0, duration=0):
+        self.so.play(sound_file, seek, duration)
         logger.info('system="%s", action="play_sound", soundfile="%s"'
                     % (self.system, sound_file))
 
@@ -273,7 +273,7 @@ class SoundEffects():
         # TODO(ed): We need to figure out how to kill this thread.
         sound_file = os.path.join(MEDIA_DIRECTORY, 'its_raining_men.mp3')
         if press:
-            self.press_play(sound_file)
+            self.press_play(sound_file, seek='1:13.5', duration='3.36')
 
 
 class SoundOut():
@@ -293,9 +293,17 @@ class SoundOut():
         logger.debug('action="add_to_now_playing", now_playing="%s"'
                      % self.now_playing)
 
-    def play(self, soundfile):
+    def play(self, soundfile, seek=0, duration=0):
         # play that funky soundfile
-        p = subprocess.Popen([self.player, soundfile])
+        extra_args = []
+        if seek:
+            extra_args.append('-ss')
+            extra_args.append(seek)
+        if duration:
+            extra_args.append('-endpos')
+            extra_args.append(duration)
+        p = subprocess.Popen([self.player, soundfile] + extra_args)
+        print p
         self.add_to_now_playing(p)
 
     def killall(self):
