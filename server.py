@@ -18,6 +18,7 @@ import subprocess
 import sys
 import time
 
+from avahi_announce import ZeroconfService
 import effects
 import liblo
 
@@ -338,8 +339,13 @@ if (__name__ == "__main__"):
 
     server.start()
 
+    # Avahi announce so it's findable on the controller by name
+    service = ZeroconfService(name="AMCP TouchOSC Server", port=8000, stype="_osc._udp")
+
+    service.publish()
     # Main thread turns into our LED effects thread. Runs until killed.
     try:
         server.light.renderingThread()
     finally:
         logger.debug('action="server_shutdown"')
+        service.unpublish()
