@@ -19,7 +19,6 @@ import subprocess
 import sys
 import time
 
-from avahi_announce import ZeroconfService
 import effects
 import liblo
 
@@ -326,7 +325,6 @@ class SoundOut():
             extra_args.append('-endpos')
             extra_args.append(duration)
         p = subprocess.Popen([self.player, soundfile] + extra_args)
-        print p
         self.add_to_now_playing(p)
 
     def killall(self):
@@ -361,10 +359,13 @@ if (__name__ == "__main__"):
 
     server.start()
 
-    # Avahi announce so it's findable on the controller by name
-    service = ZeroconfService(name="AMCP TouchOSC Server", port=8000, stype="_osc._udp")
+    if platform.system() != "Darwin":
+        # Avahi announce so it's findable on the controller by name
+        from avahi_announce import ZeroconfService
+        service = ZeroconfService(
+            name="AMCP TouchOSC Server", port=8000, stype="_osc._udp")
+        service.publish()
 
-    service.publish()
     # Main thread turns into our LED effects thread. Runs until killed.
     try:
         server.light.renderingThread()
