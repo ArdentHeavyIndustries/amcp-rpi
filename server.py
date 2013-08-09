@@ -11,6 +11,7 @@ Please use logging in key="value" format for statistics and debugging. Ed wants
 to Splunk the cloud.
 
 """
+import glob
 import logging
 import os
 import platform
@@ -77,7 +78,9 @@ class AMCPServer(liblo.ServerThread):
                 'speed': self.light.speed,
                 'heading_rotation': self.light.heading_rotation,
             },
-
+            'smb': {
+                'smb_effects': self.sound_effects.smb_sounds,
+            },
             'water': {
                 'rain': self.water.rain,
                 'make_it_rain': self.water.make_it_rain,
@@ -91,6 +94,7 @@ class AMCPServer(liblo.ServerThread):
         logger.debug('action="catch_all", path="%s", args="%s"' % (path, args))
         p = path.split("/")
         system = p[1]
+
         try:
             action = p[2]
         except IndexError:  # No action, must be a page change
@@ -98,6 +102,11 @@ class AMCPServer(liblo.ServerThread):
             return
         logger.debug('action="catch_all", system="%s", action="%s"'
                      % (system, action))
+
+        if system == 'smb':
+            x = p[3]
+            y = p[4]
+            self.systems[system][action](x=x, y=y, press=args[0])
 
         try:
             self.systems[system][action](*args)
@@ -226,11 +235,13 @@ class Lighting():
 
     def colortemp(self, colortemp):
         self.controller.params.colortemp = colortemp * 10000
-        logger.debug('action="lightning contrast" colortemp="%s"' % (colortemp))
+        logger.debug(
+            'action="lightning contrast" colortemp="%s"' % (colortemp))
 
     def turbulence(self, turbulence):
         self.controller.params.turbulence
-        logger.debug('action="lightning contrast" turbulence="%s"' % (turbulence))
+        logger.debug(
+            'action="lightning contrast" turbulence="%s"' % (turbulence))
 
     def speed(self, speed):
         self.controller.params.wind_speed = speed
@@ -239,7 +250,8 @@ class Lighting():
     def heading_rotation(self, x, y):
         self.controller.params.wind_heading = x
         self.controller.params.rotation = y
-        logger.debug('action="lightning contrast" heading="%s" rotation="%s"' % (x, y))
+        logger.debug(
+            'action="lightning contrast" heading="%s" rotation="%s"' % (x, y))
 
 
 class SoundEffects():
@@ -248,6 +260,9 @@ class SoundEffects():
     Probably want to index these sounds somehow? Config file?"""
     def __init__(self):
         self.system = 'sound'
+        #self.smb_sound_list = os.listdir(os.path.join(MEDIA_DIRECTORY, 'smb'))
+        self.smb_sound_list = glob.glob(
+            os.path.join(MEDIA_DIRECTORY, 'smb', 'smb*'))
         self.so = SoundOut()
 
     def press_play(self, sound_file):
@@ -273,6 +288,13 @@ class SoundEffects():
         # TODO(ed): We need to figure out how to kill this thread.
         sound_file = os.path.join(MEDIA_DIRECTORY, 'its_raining_men.mp3')
         if press:
+            self.press_play(sound_file)
+
+    def smb_sounds(self, x=None, y=None, press=None):
+        if press:
+            logger.debug('pressed')
+            id = int(y) * 5 + int(x)
+            sound_file = self.smb_sound_list[id]
             self.press_play(sound_file)
 
 
