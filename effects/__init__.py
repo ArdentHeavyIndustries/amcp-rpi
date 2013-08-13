@@ -21,6 +21,7 @@
 # 
 
 import time
+import os
 import sys
 import numpy
 import json
@@ -40,7 +41,12 @@ class Model(object):
 
     def __init__(self, filename):
         # Raw graph data
-        self.graphData = json.load(open(filename))
+        try:
+            self.graphData = json.load(open(filename))
+        except IOError:
+            cwd = os.path.dirname(__file__)
+            full_filename = os.path.join(cwd, '..', filename)
+            self.graphData = json.load(open(full_filename))
 
         # Points, as a NumPy array
         self.points = numpy.array([x['point'] for x in self.graphData])
