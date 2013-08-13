@@ -23,12 +23,9 @@ import effects
 import liblo
 
 def OnPi():
-    uname_m = subprocess.check_output('uname -m')
+    uname_m = subprocess.check_output('uname -m', shell=True).strip()
     # Assume that an ARM processor means we're on the Pi
     return uname_m == 'armv6l'
-
-OnPi
-sys.exit()
 
 CONSOLE_LOG_LEVEL = logging.DEBUG
 FILE_LOG_LEVEL = logging.DEBUG
@@ -364,7 +361,7 @@ class PiGPIO():
             GPIO.setup(RAIN_PIN, GPIO.OUT)
             GPIO.setup(MIST_PIN, GPIO.OUT)
             GPIO.setup(SPARE_PIN, GPIO.OUT)
-            self.output = GPIO.
+            self.output = GPIO.output
         else:
             def fake_gpio(pin, value):
                 print "SETTING GPIO PIN %s TO %d" % (pin, value)
