@@ -40,3 +40,26 @@ Important: By default, this will compile without any optimization flags. Compile
 
     ./configure
     CFLAGS="-O3 -ffast-math" make
+
+
+Raspberry Pi Steps
+---------
+	install SD card
+	boot up and change the default password and expand the filesystem, reboot (raspi-config is the tool)
+	sudo rpi-update
+	sudo apt-get update
+
+	sudo apt-get install libssl-dev
+
+	sudo apt-get install mplayer
+	sudo apt-get install screen vim
+	git clone https://github.com/abrasive/shairport.git -b 1.0-dev (clone the shairport branch that's better)
+	cd ~/shairport
+	./configure CFLAGS="-O3 -ffast-math"
+	make
+	make install
+	cd ~
+	git clone https://github.com/ArdentHeavyIndustries/amcp-rpi.git
+	python setup.py build --build-platlib=.
+	cd ~/amcp-rpi/system
+	./install.sh

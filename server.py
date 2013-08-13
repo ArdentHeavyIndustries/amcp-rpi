@@ -171,7 +171,7 @@ class Water():
                 'system="%s", action="%s", pin="%s", toggle="on"'
                 % (self.system, action, RAIN_PIN))
         else:
-            pi.send(RAIN_PIN, 0)
+            self.pi.send(RAIN_PIN, 0)
             logger.info( 'system="%s", action="%s", pin="%s", toggle="off"'
                 % (self.system, action, RAIN_PIN))
 
@@ -196,9 +196,9 @@ class Water():
         pass
 
     def rain_timer(self, length):
-        pi.send(1, 1)
+        self.pi.send(1, 1)
         # sleep(length)
-        pi.send(1, 0)
+        self.pi.send(1, 0)
         pass
 
 class Lighting():
@@ -299,7 +299,6 @@ class SoundEffects():
             self.press_play(sound_file)
 
     def its_raining_men(self, press):
-        # TODO(ed): We need to figure out how to kill this thread.
         sound_file = os.path.join(MEDIA_DIRECTORY, 'its_raining_men.mp3')
         if press:
             self.press_play(sound_file, seek='1:13.5', duration='3.36')
@@ -321,7 +320,8 @@ class SoundOut():
         if my_system == 'Darwin':  # OS X
             self.player = '/usr/bin/afplay'
         elif my_system == 'Linux':
-            self.player = '/usr/local/bin/mplayer'  # is this always correct?
+            self.player = '/usr/bin/mplayer'  # is this always correct?
+        logger.debug('my_system="%s", soundplayer="%s"' % (my_system, self.player))
 
     def add_to_now_playing(self, p):
         logger.debug('action="add_to_now_playing", pid="%s"' % p.pid)
@@ -331,6 +331,7 @@ class SoundOut():
 
     def play(self, soundfile, seek=0, duration=0):
         # play that funky soundfile
+        logger.debug('action="play", soundfile="%s"' % soundfile)
         extra_args = []
         if seek:
             extra_args.append('-ss')
