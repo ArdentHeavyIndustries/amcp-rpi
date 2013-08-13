@@ -22,14 +22,20 @@ import time
 import effects
 import liblo
 
+def OnPi():
+    uname_m = subprocess.check_output('uname -m', shell=True).strip()
+    # Assume that an ARM processor means we're on the Pi
+    return uname_m == 'armv6l'
+
 CONSOLE_LOG_LEVEL = logging.DEBUG
 FILE_LOG_LEVEL = logging.DEBUG
 LOG_FILE = 'amcpserver.log'
 MEDIA_DIRECTORY = 'media'
 
 # Pins - Which GPIO pins correspond to what?
-WATER_PIN = 1
-
+RAIN_PIN = 16 # = GPIO 23
+MIST_PIN = 18 # = GPIO 24
+SPARE_PIN = 22 # = GPIO 25
 
 # Setup all our logging. Timestamps will be in localtime.
 # TODO(ed): Figure out how to get the timezone offset in the log, or use UTC
@@ -83,6 +89,8 @@ class AMCPServer(liblo.ServerThread):
             },
             'water': {
                 'rain': self.water.rain,
+                'mist': self.water.mist,
+                'spare': self.water.spare,
                 'make_it_rain': self.water.make_it_rain,
             }
         }
@@ -150,23 +158,31 @@ class AMCPServer(liblo.ServerThread):
 
 class Water():
     """Controls rain, mist, etc"""
-
     def __init__(self):
         self.system = 'water'
+        self.pi = PiGPIO()
+
+    def toggle_state(self, action, toggle):
+        logger.debug('system="%s", action="%s", toggle="%s"'
+                     % (self.system, action, toggle))
+        if toggle:
+            self.pi.send(RAIN_PIN, 1)
+            logger.info(
+                'system="%s", action="%s", pin="%s", toggle="on"'
+                % (self.system, action, RAIN_PIN))
+        else:
+            pi.send(RAIN_PIN, 0)
+            logger.info( 'system="%s", action="%s", pin="%s", toggle="off"'
+                % (self.system, action, RAIN_PIN))
 
     def rain(self, toggle):
-        logger.debug('system="%s", action="rain", toggle="%s"'
-                     % (self.system, toggle))
-        if toggle:
-            pi.send(WATER_PIN, 1)
-            logger.info(
-                'system="%s", action="rain", pin="%s", toggle="on"'
-                % (self.system, WATER_PIN))
-        else:
-            pi.send(WATER_PIN, 0)
-            logger.info(
-                'system="%s", action="rain", pin="%s", toggle="off"'
-                % (self.system, WATER_PIN))
+        self.toggle_state('rain', toggle)
+
+    def mist(self, toggle):
+        self.toggle_state('mist', toggle)
+
+    def spare(self, toggle):
+        self.toggle_state('spare', toggle)
 
     def make_it_rain(self, press):
         logger.info('system="%s", action="make_it_rain"' % self.system)
@@ -176,7 +192,6 @@ class Water():
         pass
 
     def all_the_rain(self):
-        # PiGPIO.send(1,1)
         logger.info('system="%s", action="all_the_rain"' % self.system)
         pass
 
@@ -185,7 +200,6 @@ class Water():
         # sleep(length)
         pi.send(1, 0)
         pass
-
 
 class Lighting():
     """High-level interface to the lighting effects subsystem.
@@ -338,17 +352,26 @@ class SoundOut():
         self.now_playing[pid].kill()
         logger.info('action="soundout_kill", pid="%s"' % pid)
 
-
 class PiGPIO():
     """Controls water (pumps and valves)"""
+    def __init__(self):
+        if OnPi():
+            import RPi.GPIO as GPIO
+            GPIO.setmode(GPIO.BOARD)
+            GPIO.setup(RAIN_PIN, GPIO.OUT)
+            GPIO.setup(MIST_PIN, GPIO.OUT)
+            GPIO.setup(SPARE_PIN, GPIO.OUT)
+            self.output = GPIO.output
+        else:
+            def fake_gpio(pin, value):
+                print "SETTING GPIO PIN %s TO %d" % (pin, value)
+            self.output = fake_gpio
 
     def send(self, pin_num, value):
         """Send value (1/0) to pin_num"""
         logger.debug('action="send_rpi_gpio", pin_number="%i", value="%i"'
                      % (pin_num, value))
-        pass
-
-pi = PiGPIO()
+        self.output(pin_num, value)
 
 if (__name__ == "__main__"):
     try:
@@ -372,3 +395,6 @@ if (__name__ == "__main__"):
     finally:
         logger.debug('action="server_shutdown"')
         service.unpublish()
+        if OnPi():
+            import RPi.GPIO as GPIO
+            GPIO.cleanup()
