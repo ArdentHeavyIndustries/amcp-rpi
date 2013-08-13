@@ -33,9 +33,9 @@ LOG_FILE = 'amcpserver.log'
 MEDIA_DIRECTORY = 'media'
 
 # Pins - Which GPIO pins correspond to what?
-RAIN_PIN = 23
-MIST_PIN = 24
-SPARE_PIN = 25
+RAIN_PIN = 16 # = GPIO 23
+MIST_PIN = 18 # = GPIO 24
+SPARE_PIN = 22 # = GPIO 25
 
 # Setup all our logging. Timestamps will be in localtime.
 # TODO(ed): Figure out how to get the timezone offset in the log, or use UTC
