@@ -10,26 +10,31 @@
         {
             "type": "fadecandy",
             "serial": "LXJNACKAPTQLQVMF",
+            "led": false,
             "map": [[ 0, 0, 0, 512 ]]
         },
         {
             "type": "fadecandy",
             "serial": "GTOIIANHPBMVYPWZ",
+            "led": false,
             "map": [[ 0, 512, 0, 512 ]]
         },
         {
             "type": "fadecandy",
             "serial": "ELWQLXUWZPYTKTIB",
+            "led": false,
             "map": [[ 0, 1024, 0, 512 ]]
         },
         {
             "type": "fadecandy",
             "serial": "JRJPDFZLTVCPQLCP",
+            "led": false,
             "map": [[ 0, 1536, 0, 512 ]]
         },
         {
             "type": "fadecandy",
             "serial": "JZJZCONXXJOHSTCH",
+            "led": false,
             "map": [[ 0, 2048, 0, 512 ]]
         },
         {
