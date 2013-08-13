@@ -376,10 +376,6 @@ class PiGPIO():
                      % (pin_num, value))
         self.output(pin_num, value)
 
-    def __del__(self):
-        if OnPi():
-            GPIO.cleanup()
-
 if (__name__ == "__main__"):
     try:
         server = AMCPServer(8000)
@@ -402,3 +398,6 @@ if (__name__ == "__main__"):
     finally:
         logger.debug('action="server_shutdown"')
         service.unpublish()
+        if OnPi():
+            import RPi.GPIO as GPIO
+            GPIO.cleanup()
