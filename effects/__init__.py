@@ -41,12 +41,7 @@ class Model(object):
 
     def __init__(self, filename):
         # Raw graph data
-        try:
-            self.graphData = json.load(open(filename))
-        except IOError:
-            cwd = os.path.dirname(__file__)
-            full_filename = os.path.join(cwd, '..', filename)
-            self.graphData = json.load(open(full_filename))
+        self.graphData = json.load(open(filename))
 
         # Points, as a NumPy array
         self.points = numpy.array([x['point'] for x in self.graphData])
@@ -80,7 +75,7 @@ class LightParameters(object):
 
     # Brightness and contrast for the cloud effect itself. Contrast is given
     # as a proportion of the total effect brightness.
-    brightness = 0.3
+    brightness = 0.5
     contrast = 0.9
 
     # Probability for generating lightning when no existing lightning is happening.

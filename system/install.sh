@@ -10,6 +10,7 @@
 #   4) Reboot
 
 sudo apt-get install python-avahi python-dev supervisor avahi-daemon python-liblo libao4 libev4 autoconf libudev-dev libev-dev mplayer
+sudo easy_install mplayer.py
 
 python ../server.py build --build-platlib=.
 
