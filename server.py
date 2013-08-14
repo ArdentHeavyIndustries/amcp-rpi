@@ -53,7 +53,7 @@ logger.addHandler(fh)
 logger.addHandler(ch)
 
 
-class AMCPServer(liblo.ServerThread):
+class AMCPServer(liblo.Server):
 
     def __init__(self, port):
         logger.debug('action="init_server", port="%s"' % port)
@@ -95,7 +95,7 @@ class AMCPServer(liblo.ServerThread):
             }
         }
 
-        liblo.ServerThread.__init__(self, port)
+        liblo.Server.__init__(self, port)
 
     @liblo.make_method(None, None)
     def catch_all(self, path, args):
@@ -154,6 +154,16 @@ class AMCPServer(liblo.ServerThread):
     # @liblo.make_method(None, None)
     # def fallback(self, path, args):
     #     print "received unknown message '%s' Args: %s" % (path, args)
+
+    def mainLoop(self):
+        while True:
+
+            # Drain all pending messages without blocking
+            while self.recv(0):
+                pass
+
+            # Frame rate limiting and rendering
+            server.light.controller.runFrame()
 
 
 class Water():
@@ -219,9 +229,6 @@ class Lighting():
     def flood_lights(self, light_num, intensity):
         # Turn on light_num at intensity
         pass
-
-    def renderingThread(self):
-        self.controller.run()
 
     def cloud_xy(self, x, y):
         """ Light up cloud at given XY coordinate. """
@@ -383,21 +390,26 @@ if (__name__ == "__main__"):
         print str(err)
         sys.exit()
 
-    server.start()
-
-    if platform.system() != "Darwin":
+    if platform.system() == "Darwin":
+        service = None
+    else:
         # Avahi announce so it's findable on the controller by name
         from avahi_announce import ZeroconfService
         service = ZeroconfService(
             name="AMCP TouchOSC Server", port=8000, stype="_osc._udp")
         service.publish()
 
-    # Main thread turns into our LED effects thread. Runs until killed.
+    # Main thread runs both our LED effects and our OSC server,
+    # draining all queued OSC events between frames. Runs until killed.
+
     try:
-        server.light.renderingThread()
+        server.mainLoop()
     finally:
         logger.debug('action="server_shutdown"')
-        service.unpublish()
+
+        # Cleanup
+        if service:
+            service.unpublish()
         if OnPi():
             import RPi.GPIO as GPIO
             GPIO.cleanup()
