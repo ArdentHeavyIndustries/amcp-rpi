@@ -182,11 +182,9 @@ class LightController(object):
         self._fpsTime = 0
         self._fpsLogPeriod = 0.5    # How often to log frame rate
 
-    def run(self):
-        """Main rendering loop. Calls runFrame(), keeps track of frames per second."""
-
-        while True:
-            self._drawFrame(self._advanceTime())
+    def runFrame(self):
+        """Run one frame of our main rendering loop."""
+        self._drawFrame(self._advanceTime())
 
     def _advanceTime(self):
         """Update our virtual clock (self.time)
