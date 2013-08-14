@@ -9,7 +9,7 @@
 #   3) Run this install.sh
 #   4) Reboot
 
-sudo apt-get install python-avahi python-dev supervisor avahi-daemon python-liblo libao4
+sudo apt-get install python-avahi python-dev supervisor avahi-daemon python-liblo libao4 libev4 autoconf libudev-dev libev-dev mplayer
 
 python ../server.py build --build-platlib=.
 
