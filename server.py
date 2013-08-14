@@ -99,7 +99,6 @@ class AMCPServer(liblo.Server):
 
     @liblo.make_method(None, None)
     def catch_all(self, path, args):
-        logger.debug('action="catch_all", path="%s", args="%s"' % (path, args))
         p = path.split("/")
         system = p[1]
 
@@ -108,8 +107,6 @@ class AMCPServer(liblo.Server):
         except IndexError:  # No action, must be a page change
             logger.debug('action="active_page", page="%s"' % system)
             return
-        logger.debug('action="catch_all", system="%s", action="%s"'
-                     % (system, action))
 
         if system == 'smb':
             x = p[3]
@@ -173,17 +170,7 @@ class Water():
         self.pi = PiGPIO()
 
     def toggle_state(self, action, pin, toggle):
-        logger.debug('system="%s", action="%s", toggle="%s"'
-                     % (self.system, action, toggle))
-        if toggle:
-            self.pi.send(pin, 1)
-            logger.info(
-                'system="%s", action="%s", pin="%s", toggle="on"'
-                % (self.system, action, RAIN_PIN))
-        else:
-            self.pi.send(pin, 0)
-            logger.info( 'system="%s", action="%s", pin="%s", toggle="off"'
-                % (self.system, action, RAIN_PIN))
+        self.pi.send(pin, toggle and 1 or 0)
 
     def rain(self, toggle):
         self.toggle_state('rain', RAIN_PIN, toggle)
@@ -219,12 +206,14 @@ class Lighting():
     def __init__(self):
         self.system = 'light'
         self.controller = effects.LightController()
+        self.lightningProbability = 0
 
     def strobe(self, press):
         """ Light up cloud for as long as button is held. """
         if press:
-            logger.info('system="%s", action=strobe' % (self.system))
-        self.controller.params.lightning_new = press
+            self.controller.params.lightning_new = 1.0
+        else:
+            self.controller.params.lightning_new = self.lightningProbability
 
     def flood_lights(self, light_num, intensity):
         # Turn on light_num at intensity
@@ -232,48 +221,36 @@ class Lighting():
 
     def cloud_xy(self, x, y):
         """ Light up cloud at given XY coordinate. """
-        logger.debug('action="lightning Bolt!" x="%s" y="%s"' % (x, y))
         self.controller.makeLightningBolt(x*-1, y*-1)
 
     def cloud_z(self, z):
         """ Change the new lighting percentage value.
         Wants to be non-linear curve, but this will suffice for now.
         """
-        self.controller.params.lightning_new = z * .4
-        logger.debug('action="lightning percent" z="%s"' % (self.controller.params.lightning_new))
+        self.lightningProbability = z * 0.4
+        self.controller.params.lightning_new = self.lightningProbability
 
     def brightness(self, bright):
         self.controller.params.brightness = bright
-        logger.debug('action="lightning brightness" bright="%s"' % (self.controller.params.brightness))
 
     def contrast(self, contrast):
         self.controller.params.contrast = contrast*10
-        logger.debug('action="lightning contrast" contrast="%s"' % (self.controller.params.contrast))
 
     def detail(self, detail):
         self.controller.params.detail = detail*3
-        logger.debug('action="lightning contrast" detail="%s"' % (self.controller.params.detail))
 
     def colortemp(self, colortemp):
-        self.controller.params.temperature = 4000*(colortemp + 1)
-        logger.debug(
-            'action="lightning contrast" colortemp="%s"' % (self.controller.params.temperature))
+        self.controller.params.temperature = 4000 * (colortemp + 1)
 
     def turbulence(self, turbulence):
         self.controller.params.turbulence = turbulence * .2
-        logger.debug(
-            'action="lightning contrast" turbulence="%s"' % (self.controller.params.turbulence))
 
     def speed(self, speed):
-        self.controller.params.wind_speed = speed * .2
-        logger.debug('action="lightning contrast" speed="%s"' % (self.controller.params.wind_speed))
+        self.controller.params.wind_speed = speed * .8
 
     def heading_rotation(self, x, y):
         self.controller.params.wind_heading = x * 100
         self.controller.params.rotation = y * 360
-        logger.debug(
-            'action="lightning contrast" heading="%s" rotation="%s"' %
-            (self.controller.params.wind_heading, self.controller.params.rotation))
 
 
 class SoundEffects():
@@ -313,7 +290,6 @@ class SoundEffects():
 
     def smb_sounds(self, x=None, y=None, press=None):
         if press:
-            logger.debug('pressed')
             id = int(y) * 5 + int(x)
             sound_file = self.smb_sound_list[id]
             self.press_play(sound_file)
