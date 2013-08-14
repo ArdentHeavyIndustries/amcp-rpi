@@ -232,40 +232,41 @@ class Lighting():
         """ Change the new lighting percentage value.
         Wants to be non-linear curve, but this will suffice for now.
         """
-        self.controller.params.lightning_new = z
-        logger.debug('action="lightning percent" z="%s"' % (z))
+        self.controller.params.lightning_new = z * .4
+        logger.debug('action="lightning percent" z="%s"' % (self.controller.params.lightning_new))
 
     def brightness(self, bright):
         self.controller.params.brightness = bright
-        logger.debug('action="lightning brightness" bright="%s"' % (bright))
+        logger.debug('action="lightning brightness" bright="%s"' % (self.controller.params.brightness))
 
     def contrast(self, contrast):
-        self.controller.params.contrast = contrast
-        logger.debug('action="lightning contrast" contrast="%s"' % (contrast))
+        self.controller.params.contrast = contrast*10
+        logger.debug('action="lightning contrast" contrast="%s"' % (self.controller.params.contrast))
 
     def detail(self, detail):
-        self.controller.params.detail = detail
-        logger.debug('action="lightning contrast" detail="%s"' % (detail))
+        self.controller.params.detail = detail*3
+        logger.debug('action="lightning contrast" detail="%s"' % (self.controller.params.detail))
 
     def colortemp(self, colortemp):
-        self.controller.params.colortemp = colortemp * 10000
+        self.controller.params.temperature = 4000*(colortemp + 1)
         logger.debug(
-            'action="lightning contrast" colortemp="%s"' % (colortemp))
+            'action="lightning contrast" colortemp="%s"' % (self.controller.params.temperature))
 
     def turbulence(self, turbulence):
-        self.controller.params.turbulence
+        self.controller.params.turbulence = turbulence * .2
         logger.debug(
-            'action="lightning contrast" turbulence="%s"' % (turbulence))
+            'action="lightning contrast" turbulence="%s"' % (self.controller.params.turbulence))
 
     def speed(self, speed):
-        self.controller.params.wind_speed = speed
-        logger.debug('action="lightning contrast" speed="%s"' % (speed))
+        self.controller.params.wind_speed = speed * .2
+        logger.debug('action="lightning contrast" speed="%s"' % (self.controller.params.wind_speed))
 
     def heading_rotation(self, x, y):
-        self.controller.params.wind_heading = x
-        self.controller.params.rotation = y
+        self.controller.params.wind_heading = x * 100
+        self.controller.params.rotation = y * 360
         logger.debug(
-            'action="lightning contrast" heading="%s" rotation="%s"' % (x, y))
+            'action="lightning contrast" heading="%s" rotation="%s"' %
+            (self.controller.params.wind_heading, self.controller.params.rotation))
 
 
 class SoundEffects():
@@ -322,6 +323,7 @@ class SoundOut():
         elif my_system == 'Linux':
             self.player = '/usr/bin/mplayer'  # is this always correct?
         logger.debug('my_system="%s", soundplayer="%s"' % (my_system, self.player))
+        self.soundpath = '/home/pi/amcp-rpi'
 
     def add_to_now_playing(self, p):
         logger.debug('action="add_to_now_playing", pid="%s"' % p.pid)
@@ -332,14 +334,14 @@ class SoundOut():
     def play(self, soundfile, seek=0, duration=0):
         # play that funky soundfile
         logger.debug('action="play", soundfile="%s"' % soundfile)
-        extra_args = []
+        extra_args = ['-nolirc', '-ao', 'alsa']
         if seek:
             extra_args.append('-ss')
             extra_args.append(seek)
         if duration:
             extra_args.append('-endpos')
             extra_args.append(duration)
-        p = subprocess.Popen([self.player, soundfile] + extra_args)
+        p = subprocess.Popen([self.player, os.path.join(self.soundpath, soundfile)] + extra_args)
         self.add_to_now_playing(p)
 
     def killall(self):
