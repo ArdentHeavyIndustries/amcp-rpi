@@ -162,27 +162,27 @@ class Water():
         self.system = 'water'
         self.pi = PiGPIO()
 
-    def toggle_state(self, action, toggle):
+    def toggle_state(self, action, pin, toggle):
         logger.debug('system="%s", action="%s", toggle="%s"'
                      % (self.system, action, toggle))
         if toggle:
-            self.pi.send(RAIN_PIN, 1)
+            self.pi.send(pin, 1)
             logger.info(
                 'system="%s", action="%s", pin="%s", toggle="on"'
                 % (self.system, action, RAIN_PIN))
         else:
-            self.pi.send(RAIN_PIN, 0)
+            self.pi.send(pin, 0)
             logger.info( 'system="%s", action="%s", pin="%s", toggle="off"'
                 % (self.system, action, RAIN_PIN))
 
     def rain(self, toggle):
-        self.toggle_state('rain', toggle)
+        self.toggle_state('rain', RAIN_PIN, toggle)
 
     def mist(self, toggle):
-        self.toggle_state('mist', toggle)
+        self.toggle_state('mist', MIST_PIN, toggle)
 
     def spare(self, toggle):
-        self.toggle_state('spare', toggle)
+        self.toggle_state('spare', SPARE_PIN, toggle)
 
     def make_it_rain(self, press):
         logger.info('system="%s", action="make_it_rain"' % self.system)
