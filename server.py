@@ -89,8 +89,8 @@ class AMCPServer(liblo.Server):
                 'color_bottom': self.light.color_bottom,
                 'turbulence': self.light.turbulence,
                 'speed': self.light.speed,
-                'heading': self.light.rotation,
-                'rotation': self.light.heading,
+                'heading': self.light.heading,
+                'rotation': self.light.rotation,
             },
             'smb': {
                 'smb_effects': self.sound_effects.smb_sounds,
