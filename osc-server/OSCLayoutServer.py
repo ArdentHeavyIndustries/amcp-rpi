@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Simple HTTP Server.
 
 This module builds on BaseHTTPServer by implementing the standard GET
@@ -53,4 +54,5 @@ def doit(filename):
     httpd.serve_forever()
 
 if __name__ == '__main__':
-    doit(sys.argv[1])
+    filename = sys.argv[1] if len(sys.argv) == 2 else 'amcp_template.touchosc'
+    doit(filename)
