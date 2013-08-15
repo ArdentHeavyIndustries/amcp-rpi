@@ -107,6 +107,7 @@ class AMCPServer(liblo.Server):
                 'mist': self.water.mist,
                 'spare': self.water.spare,
                 'make_it_rain': self.water.make_it_rain,
+                'all_rain_off': self.water.all_rain_off
             }
         }
 
@@ -247,6 +248,11 @@ class Water():
         time.sleep(5000)
         self.rain(False)
         pass
+
+    def all_rain_off(self, press):
+        # TODO(ed): Turn off all the rain
+        if press:
+            logger.info('system="%s", action="all_rain_off"', self.system)
 
     def all_the_rain(self):
         pass
