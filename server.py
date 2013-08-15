@@ -87,7 +87,8 @@ class AMCPServer(liblo.Server):
                 'colortemp': self.light.colortemp,
                 'turbulence': self.light.turbulence,
                 'speed': self.light.speed,
-                'heading_rotation': self.light.heading_rotation,
+                'heading': self.light.rotation,
+                'rotation': self.light.heading,
             },
             'smb': {
                 'smb_effects': self.sound_effects.smb_sounds,
@@ -251,9 +252,11 @@ class Lighting():
     def speed(self, speed):
         self.controller.params.wind_speed = speed * .8
 
-    def heading_rotation(self, x, y):
-        self.controller.params.wind_heading = x * 100
-        self.controller.params.rotation = y * 360
+    def heading(self, x, y):
+        self.controller.params.wind_heading = math.atan2(y, x)*math.pi/180
+
+    def rotation(self, x, y):
+        self.controller.params.rotation = math.atan2(y, x)*math.pi/180
 
 
 class SoundEffects():
