@@ -19,7 +19,7 @@ import subprocess
 import sys
 import time
 
-import mplayer
+import pygame
 import effects
 import liblo
 
@@ -275,17 +275,17 @@ class SoundEffects():
             self.so.stop()
 
     def thunder(self, press):
-        sound_file = os.path.join(MEDIA_DIRECTORY, 'thunder_hd.mp3')
+        sound_file = os.path.join(MEDIA_DIRECTORY, 'thunder_hd.wav')
         if press:
             self.press_play(sound_file)
 
     def rain(self, press):
-        sound_file = os.path.join(MEDIA_DIRECTORY, 'rain.mp3')
+        sound_file = os.path.join(MEDIA_DIRECTORY, 'rain.wav')
         if press:
             self.press_play(sound_file)
 
     def its_raining_men(self, press):
-        sound_file = os.path.join(MEDIA_DIRECTORY, 'its_raining_men.mp3')
+        sound_file = os.path.join(MEDIA_DIRECTORY, 'its_raining_men.wav')
         if press:
             self.press_play(sound_file, seek=73.5)
 
@@ -304,23 +304,32 @@ class SoundOut():
         if OnPi():
             print "Init mixer"
             os.system("amixer sset PCM 0")
-
-        self.player = mplayer.Player()
+        self.sounds = []
+        pygame.mixer.init(11025)
         self.setVolume(defaultVolume)
 
     def setVolume(self, volume):
-        self.volume = volume
-        self.player.volume = volume
+        self.volume = volume * .2
+        self.prune_sounds()
+        for (s, ch) in self.sounds:
+            s.set_volume(volume)
 
     def play(self, soundfile, seek=None):
-        self.player.loadfile(soundfile)
-        self.player.volume = self.volume
-        if seek:
-            self.player.seek(seek)
+        s = pygame.mixer.Sound(soundfile)
+        ch = s.play()
+        self.sounds.append((s, ch))
+        #if seek:
+        #    self.player.seek(seek)
 
     def stop(self):
-        self.player.stop()
+        self.prune_sounds()
+        for (s, ch) in self.sounds:
+            s.fadeout(2000)
 
+    def prune_sounds(self):
+        for idx, (s, ch) in enumerate(self.sounds[:]):
+            if not ch.get_busy():
+                self.sounds.remove((s,ch))
 
 class PiGPIO():
     """Controls water (pumps and valves)"""
