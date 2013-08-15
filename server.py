@@ -121,7 +121,7 @@ class AMCPServer(liblo.Server):
         return '.'.join(ipsplit)
 
     @liblo.make_method(None, None)
-    def catch_all(self, path, args):
+    def catch_all(self, path, args, args_types, src):
         p = path.split("/")
         system = p[1]
 
@@ -135,7 +135,7 @@ class AMCPServer(liblo.Server):
                 # TODO(ed): This would be nice to only sync the one client,
                 # but unsure how to get the client's host/ip
                 logger.debug('action="ping"')
-                self.sync_systems()
+                self.sync_systems(src)
             else:
                 try:
                     self.systems[system]['sync'](self.broadcast_ip,
@@ -158,10 +158,11 @@ class AMCPServer(liblo.Server):
                 'system="%s", action=%s'
                 % (path, args, system, action))
 
-    def sync_systems(self):
+    def sync_systems(self, src):
+        ip = src.get_hostname()
         for sys in self.systems:
             try:
-                self.systems[sys]['sync'](self.broadcast_ip, self.client_port)
+                self.systems[sys]['sync'](ip, self.client_port)
             except KeyError:
                 logger.warn('action="sync_systems", system="%s", '
                             'error="no sync method defined', sys)
