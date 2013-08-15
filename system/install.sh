@@ -14,7 +14,7 @@ sudo apt-get install python-avahi python-dev supervisor avahi-daemon python-libl
 
 python ../setup.py build --build-platlib=.
 
-sudo cp supervisor/amcp.conf /etc/supervisor/conf.d/
+sudo cp supervisor/* /etc/supervisor/conf.d/
 
 sudo cp -r etc usr lib /
 sudo update-rc.d fcserver defaults
