@@ -38,6 +38,9 @@ RAIN_PIN = 16 # = GPIO 23
 MIST_PIN = 18 # = GPIO 24
 SPARE_PIN = 22 # = GPIO 25
 
+# Sound
+RAIN_FILENAME = 'rain.wav'
+
 # Setup all our logging. Timestamps will be in localtime.
 # TODO(ed): Figure out how to get the timezone offset in the log, or use UTC
 logger = logging.getLogger('amcpserver')
@@ -66,7 +69,7 @@ class AMCPServer(liblo.Server):
             'sound': {
                 'volume': self.sound_effects.volume,
                 'thunder': self.sound_effects.thunder,
-                'rain': self.sound_effects.rain,
+                'rain_volume': self.sound_effects.rain_volume,
                 'its_raining_men': self.sound_effects.its_raining_men,
                 'silence': self.sound_effects.silence
             },
@@ -263,6 +266,10 @@ class SoundEffects():
         self.smb_sound_list = glob.glob(
             os.path.join(MEDIA_DIRECTORY, 'smb', 'smb*'))
         self.so = SoundOut()
+        self.so.initRain(os.path.join(MEDIA_DIRECTORY, RAIN_FILENAME))
+       
+    def rain_volume(self, volume):
+        self.so.setRainVolume(volume)
 
     def volume(self, volume):
         self.so.setVolume(volume)
@@ -279,10 +286,10 @@ class SoundEffects():
         if press:
             self.press_play(sound_file)
 
-    def rain(self, press):
-        sound_file = os.path.join(MEDIA_DIRECTORY, 'rain.wav')
-        if press:
-            self.press_play(sound_file)
+    #def rain(self, press):
+    #    sound_file = os.path.join(MEDIA_DIRECTORY, 'rain.wav')
+    #    if press:
+    #        self.press_play(sound_file)
 
     def its_raining_men(self, press):
         sound_file = os.path.join(MEDIA_DIRECTORY, 'its_raining_men.wav')
@@ -307,9 +314,16 @@ class SoundOut():
         self.sounds = []
         pygame.mixer.init(11025)
         self.setVolume(defaultVolume)
+    
+    def initRain(self, rain_filename):
+        self.rain = pygame.mixer.Sound(rain_filename)
+        self.rain_channel = self.rain.play(loops=-1, fade_ms=2000)
+   
+    def setRainVolume(self, volume):
+        self.rain.set_volume(volume)
 
     def setVolume(self, volume):
-        self.volume = volume * .2
+        self.volume = volume
         self.prune_sounds()
         for (s, ch) in self.sounds:
             s.set_volume(volume)
@@ -318,6 +332,7 @@ class SoundOut():
         s = pygame.mixer.Sound(soundfile)
         ch = s.play()
         self.sounds.append((s, ch))
+        return (s, ch)
         #if seek:
         #    self.player.seek(seek)
 
