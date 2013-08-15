@@ -12,7 +12,7 @@
 
 sudo apt-get install python-avahi python-dev supervisor avahi-daemon python-liblo libao4 libev4 autoconf libudev-dev libev-dev mpg123 python-pygame
 
-python ../server.py build --build-platlib=.
+python ../setup.py build --build-platlib=.
 
 sudo cp supervisor/amcp.conf /etc/supervisor/conf.d/
 
@@ -20,7 +20,13 @@ sudo cp -r etc usr lib /
 sudo update-rc.d fcserver defaults
 sudo update-rc.d shairport defaults
 
-cd ../media
+pushd ../media
 for f in *.mp3; do 
     mp123 -w ${f%%mp3}wav $f
 done;
+popd
+
+cd ~
+
+git clone https://github.com/ArdentHeavyIndustries/amcp-osc.git
+
