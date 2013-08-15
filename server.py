@@ -53,7 +53,7 @@ logger.addHandler(fh)
 logger.addHandler(ch)
 
 
-class AMCPServer(liblo.ServerThread):
+class AMCPServer:
 
     def __init__(self, port):
         logger.debug('action="init_server", port="%s"' % port)
@@ -73,6 +73,7 @@ class AMCPServer(liblo.ServerThread):
                 'lightning': self.light.strobe,
                 'cloud_z': self.light.cloud_z,
                 'cloud_xy': self.light.cloud_xy,
+                'sync': self.light.sync,
             },
 
             'light2': {
@@ -95,10 +96,12 @@ class AMCPServer(liblo.ServerThread):
             }
         }
 
-        liblo.ServerThread.__init__(self, port)
+        self.server = liblo.Server(port)
+        self.server.register_methods(self)
 
     @liblo.make_method(None, None)
-    def catch_all(self, path, args):
+    def catch_all(self, path, args, arg_types, src):
+        print 'catch', src
         logger.debug('action="catch_all", path="%s", args="%s"' % (path, args))
         p = path.split("/")
         system = p[1]
@@ -115,10 +118,12 @@ class AMCPServer(liblo.ServerThread):
             x = p[3]
             y = p[4]
             self.systems[system][action](x=x, y=y, press=args[0])
+        elif system == 'light' and action == 'sync'
+            self.systems[system][action](*args, src=src)
 
         try:
             self.systems[system][action](*args)
-        except KeyError:
+        except:
             logger.error(
                 'action="catch_all", path="%s", error="not found" args="%s", '
                 'system="%s", action=%s'
@@ -162,11 +167,11 @@ class Water():
         self.system = 'water'
         self.pi = PiGPIO()
 
-    def toggle_state(self, action, pin, toggle):
+    def toggle_state(self, action, toggle, duration=0):
         logger.debug('system="%s", action="%s", toggle="%s"'
                      % (self.system, action, toggle))
         if toggle:
-            self.pi.send(pin, 1)
+            self.pi.send(RAIN_PIN, 1, duration)
             logger.info(
                 'system="%s", action="%s", pin="%s", toggle="on"'
                 % (self.system, action, RAIN_PIN))
@@ -177,6 +182,10 @@ class Water():
 
     def rain(self, toggle):
         self.toggle_state('rain', RAIN_PIN, toggle)
+
+    def rain(self, toggle, src ):
+        print 'args', toggle, src
+        liblo.send(liblo.Address(src.get_hostname(), 9000), liblo.Message('', args[0]))
 
     def mist(self, toggle):
         self.toggle_state('mist', MIST_PIN, toggle)
@@ -232,7 +241,8 @@ class Lighting():
         """ Change the new lighting percentage value.
         Wants to be non-linear curve, but this will suffice for now.
         """
-        self.controller.params.lightning_new = z
+        print 'z', type(z), z
+        self.controller.params.lightning_new = z * .4
         logger.debug('action="lightning percent" z="%s"' % (z))
 
     def brightness(self, bright):
@@ -245,28 +255,37 @@ class Lighting():
 
     def detail(self, detail):
         self.controller.params.detail = detail
-        logger.debug('action="lightning contrast" detail="%s"' % (detail))
+        logger.debug('action="lightning detail" detail="%s"' % (detail))
 
     def colortemp(self, colortemp):
-        self.controller.params.colortemp = colortemp * 10000
+        self.controller.params.temperature = colortemp * 10000
         logger.debug(
-            'action="lightning contrast" colortemp="%s"' % (colortemp))
+            'action="lightning colortemperature" colortemp="%s"' % (self.controller.params.temperature))
 
     def turbulence(self, turbulence):
-        self.controller.params.turbulence
+        self.controller.params.turbulence = turbulence
         logger.debug(
-            'action="lightning contrast" turbulence="%s"' % (turbulence))
+            'action="lightning turbulence" turbulence="%s"' % (turbulence))
 
     def speed(self, speed):
         self.controller.params.wind_speed = speed
-        logger.debug('action="lightning contrast" speed="%s"' % (speed))
+        logger.debug('action="lightning wind speed" speed="%s"' % (speed))
 
     def heading_rotation(self, x, y):
-        self.controller.params.wind_heading = x
-        self.controller.params.rotation = y
+        self.controller.params.wind_heading = x + 1
+        self.controller.params.rotation = y + 1
         logger.debug(
-            'action="lightning contrast" heading="%s" rotation="%s"' % (x, y))
+            'action="lightning heading/rotation" heading="%s" rotation="%s"' % (x, y))
 
+    def sync(self, val, src):
+        dst = liblo.Address(src.get_hostname(), 9000)
+        message_map = [
+            ('/light/cloud_z', self.controller.params.lightning_new / .4),
+            ('/light2/brightness', self.controller.params.brightness),
+            ('/light2/colortemp', self.controller.params.temperature / 10000.0)
+                      ]
+        for path, value in message_map:
+            liblo.send(dst, liblo.Message(path, value))
 
 class SoundEffects():
     """Play different sound effects.
@@ -320,8 +339,13 @@ class SoundOut():
         if my_system == 'Darwin':  # OS X
             self.player = '/usr/bin/afplay'
         elif my_system == 'Linux':
+<<<<<<< Updated upstream
             self.player = '/usr/bin/mplayer'  # is this always correct?
         logger.debug('my_system="%s", soundplayer="%s"' % (my_system, self.player))
+=======
+            #self.player = '/usr/local/bin/mplayer'  # is this always correct?
+            self.player = '/usr/bin/mplayer'  # is this always correct?
+>>>>>>> Stashed changes
 
     def add_to_now_playing(self, p):
         logger.debug('action="add_to_now_playing", pid="%s"' % p.pid)
@@ -367,12 +391,24 @@ class PiGPIO():
             def fake_gpio(pin, value):
                 print "SETTING GPIO PIN %s TO %d" % (pin, value)
             self.output = fake_gpio
+        self.pins = []
 
-    def send(self, pin_num, value):
+    def send(self, pin_num, value, client, duration=0):
         """Send value (1/0) to pin_num"""
         logger.debug('action="send_rpi_gpio", pin_number="%i", value="%i"'
                      % (pin_num, value))
         self.output(pin_num, value)
+        if duration != 0:
+            self.pins.append((pin_num, value, time.time() + duration))
+
+    def check_duration(self):
+        now = time.time()
+        for idx, (pin, value, end_time) in enumerate(self.pins[:]):
+            if end_time < now:
+                del self.pins[idx]
+                val = False if value else True
+                self.output(pin, val)
+                #self.notify(pin, val)
 
 if (__name__ == "__main__"):
     try:
@@ -381,7 +417,7 @@ if (__name__ == "__main__"):
         print str(err)
         sys.exit()
 
-    server.start()
+    #server.server.start()
 
     if platform.system() != "Darwin":
         # Avahi announce so it's findable on the controller by name
@@ -392,7 +428,11 @@ if (__name__ == "__main__"):
 
     # Main thread turns into our LED effects thread. Runs until killed.
     try:
-        server.light.renderingThread()
+        while True:
+            server.light.controller.runone()
+            server.server.recv(100)
+            server.water.pi.check_duration()
+        #server.light.renderingThread()
     finally:
         logger.debug('action="server_shutdown"')
         service.unpublish()

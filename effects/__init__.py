@@ -76,7 +76,8 @@ class LightParameters(object):
     rotation = 0
 
     # Color temperature, in Kelvin
-    temperature = 6800
+    #temperature = 6800
+    temperature = 3000
 
     # Brightness and contrast for the cloud effect itself. Contrast is given
     # as a proportion of the total effect brightness.
@@ -181,6 +182,9 @@ class LightController(object):
         self._fpsFrames = 0
         self._fpsTime = 0
         self._fpsLogPeriod = 0.5    # How often to log frame rate
+
+    def runone(self):
+        self._drawFrame(self._advanceTime())
 
     def run(self):
         """Main rendering loop. Calls runFrame(), keeps track of frames per second."""
