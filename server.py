@@ -13,6 +13,7 @@ to Splunk the cloud.
 """
 import glob
 import logging
+import math
 import os
 import platform
 import subprocess
@@ -84,11 +85,12 @@ class AMCPServer(liblo.Server):
                 'brightness': self.light.brightness,
                 'contrast': self.light.contrast,
                 'detail': self.light.detail,
-                'colortemp': self.light.colortemp,
+                'color_bottom': self.light.color_top,
+                'color_bottom': self.light.color_bottom,
                 'turbulence': self.light.turbulence,
                 'speed': self.light.speed,
-                'heading': self.light.rotation,
-                'rotation': self.light.heading,
+                'heading': self.light.heading,
+                'rotation': self.light.rotation,
             },
             'smb': {
                 'smb_effects': self.sound_effects.smb_sounds,
@@ -243,8 +245,11 @@ class Lighting():
     def detail(self, detail):
         self.controller.params.detail = detail*3
 
-    def colortemp(self, colortemp):
-        self.controller.params.temperature = 4000 * (colortemp + 1)
+    def color_top(self, color_top):
+        self.controller.params.color_top = color_top
+
+    def color_bottom(self, color_bottom):
+        self.controller.params.color_bottom = color_bottom
 
     def turbulence(self, turbulence):
         self.controller.params.turbulence = turbulence * .4
@@ -253,11 +258,10 @@ class Lighting():
         self.controller.params.wind_speed = speed * .8
 
     def heading(self, x, y):
-        self.controller.params.wind_heading = math.atan2(y, x)*math.pi/180
+        self.controller.params.wind_heading = math.atan2(x, y*-1)*180/math.pi
 
     def rotation(self, x, y):
-        self.controller.params.rotation = math.atan2(y, x)*math.pi/180
-
+        self.controller.params.rotation = math.atan2(x, y*-1)*180/math.pi
 
 class SoundEffects():
     """Play different sound effects.
