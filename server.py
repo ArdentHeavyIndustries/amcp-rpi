@@ -99,7 +99,7 @@ class AMCPServer(liblo.Server):
                 'rain': self.water.rain,
                 'mist': self.water.mist,
                 'spare': self.water.spare,
-                'make_it_rain': self.water.make_it_rain,
+                'all_rain_off': self.water.all_rain_off,
             }
         }
 
@@ -189,20 +189,11 @@ class Water():
     def spare(self, toggle):
         self.toggle_state('spare', SPARE_PIN, toggle)
 
-    def make_it_rain(self, press):
-        self.rain(True)
-        time.sleep(5000)
+    def all_rain_off(self, press):
         self.rain(False)
-        pass
+        self.mist(False)
+        self.spare(False)
 
-    def all_the_rain(self):
-        pass
-
-    def rain_timer(self, length):
-        self.pi.send(1, 1)
-        # sleep(length)
-        self.pi.send(1, 0)
-        pass
 
 class Lighting():
     """High-level interface to the lighting effects subsystem.
