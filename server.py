@@ -29,8 +29,8 @@ def OnPi():
     # Assume that an ARM processor means we're on the Pi
     return uname_m == 'armv6l'
 
-CONSOLE_LOG_LEVEL = logging.DEBUG
-FILE_LOG_LEVEL = logging.DEBUG
+CONSOLE_LOG_LEVEL = logging.ERROR
+FILE_LOG_LEVEL = logging.INFO
 LOG_FILE = 'amcpserver.log'
 MEDIA_DIRECTORY = 'media'
 
