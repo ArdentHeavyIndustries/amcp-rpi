@@ -13,6 +13,7 @@ to Splunk the cloud.
 """
 import glob
 import logging
+import math
 import os
 import platform
 import socket
@@ -29,8 +30,8 @@ def OnPi():
     # Assume that an ARM processor means we're on the Pi
     return uname_m == 'armv6l'
 
-CONSOLE_LOG_LEVEL = logging.DEBUG
-FILE_LOG_LEVEL = logging.DEBUG
+CONSOLE_LOG_LEVEL = logging.ERROR
+FILE_LOG_LEVEL = logging.INFO
 LOG_FILE = 'amcpserver.log'
 MEDIA_DIRECTORY = 'media'
 
@@ -92,10 +93,12 @@ class AMCPServer(liblo.Server):
                 'brightness': self.light.brightness,
                 'contrast': self.light.contrast,
                 'detail': self.light.detail,
-                'colortemp': self.light.colortemp,
+                'color_top': self.light.color_top,
+                'color_bottom': self.light.color_bottom,
                 'turbulence': self.light.turbulence,
                 'speed': self.light.speed,
-                'heading_rotation': self.light.heading_rotation,
+                'heading': self.light.heading,
+                'rotation': self.light.rotation,
             },
             'smb': {
                 'sync': self.sound_effects.sync,
@@ -106,8 +109,7 @@ class AMCPServer(liblo.Server):
                 'rain': self.water.rain,
                 'mist': self.water.mist,
                 'spare': self.water.spare,
-                'make_it_rain': self.water.make_it_rain,
-                'all_rain_off': self.water.all_rain_off
+                'all_rain_off': self.water.all_rain_off,
             }
         }
 
@@ -243,25 +245,12 @@ class Water():
         self.toggle_state('spare', SPARE_PIN, toggle)
         self.toggles['spare'] = toggle
 
-    def make_it_rain(self, press):
-        self.rain(True)
-        time.sleep(5000)
-        self.rain(False)
-        pass
-
     def all_rain_off(self, press):
-        # TODO(ed): Turn off all the rain
         if press:
-            logger.info('system="%s", action="all_rain_off"', self.system)
+            self.rain(False)
+            self.mist(False)
+            self.spare(False)
 
-    def all_the_rain(self):
-        pass
-
-    def rain_timer(self, length):
-        self.pi.send(1, 1)
-        # sleep(length)
-        self.pi.send(1, 0)
-        pass
 
 class Lighting():
     """High-level interface to the lighting effects subsystem.
@@ -291,7 +280,7 @@ class Lighting():
 
     def cloud_xy(self, x, y):
         """ Light up cloud at given XY coordinate. """
-        self.controller.makeLightningBolt(x*-1, y*-1)
+        self.controller.makeLightningBolt(x, -y)
 
     def cloud_z(self, z):
         """ Change the new lighting percentage value.
@@ -309,19 +298,23 @@ class Lighting():
     def detail(self, detail):
         self.controller.params.detail = detail*3
 
-    def colortemp(self, colortemp):
-        self.controller.params.temperature = 4000 * (colortemp + 1)
+    def color_top(self, color_top):
+        self.controller.params.color_top = color_top
+
+    def color_bottom(self, color_bottom):
+        self.controller.params.color_bottom = color_bottom
 
     def turbulence(self, turbulence):
-        self.controller.params.turbulence = turbulence * .2
+        self.controller.params.turbulence = turbulence * .4
 
     def speed(self, speed):
         self.controller.params.wind_speed = speed * .8
 
-    def heading_rotation(self, x, y):
-        self.controller.params.wind_heading = x * 100
-        self.controller.params.rotation = y * 360
+    def heading(self, x, y):
+        self.controller.params.wind_heading = math.atan2(y, -x)*180/math.pi
 
+    def rotation(self, x, y):
+        self.controller.params.rotation = math.atan2(x, -y) * -180/math.pi
 
 class SoundEffects():
     """Play different sound effects.
@@ -334,6 +327,7 @@ class SoundEffects():
             os.path.join(MEDIA_DIRECTORY, 'smb', 'smb*'))
         self.so = SoundOut()
         self.so.initRain(os.path.join(MEDIA_DIRECTORY, RAIN_FILENAME))
+        self.so.setRainVolume(0)
 
     def sync(self, ip, port):
         # TODO(ed): Sync the toggles
@@ -387,7 +381,7 @@ class SoundOut():
             print "Init mixer"
             os.system("amixer sset PCM 0")
         self.sounds = []
-        pygame.mixer.init(11025)
+        pygame.mixer.init(44100)
         self.setVolume(defaultVolume)
     
     def initRain(self, rain_filename):
