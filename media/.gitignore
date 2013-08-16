@@ -1,0 +1,4 @@
+# Converted sounds in the 'media' directory, but not the existing
+# wav files in the SMB directory.
+/*.wav
+
