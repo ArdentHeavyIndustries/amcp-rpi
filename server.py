@@ -20,6 +20,7 @@ import socket
 import subprocess
 import sys
 import time
+import struct
 
 import pygame
 import effects
@@ -30,7 +31,13 @@ def OnPi():
     # Assume that an ARM processor means we're on the Pi
     return uname_m == 'armv6l'
 
-CONSOLE_LOG_LEVEL = logging.ERROR
+# XXX: Hardcoding this for now. Using gethostbyname doesn't
+#      necessarily work, since we need to be specific about the
+#      network interface in question. Loopback broadcast won't
+#      work, for example.
+BROADCAST_IP = '10.10.10.255'
+
+CONSOLE_LOG_LEVEL = logging.INFO
 FILE_LOG_LEVEL = logging.INFO
 LOG_FILE = 'amcpserver.log'
 MEDIA_DIRECTORY = 'media'
@@ -61,11 +68,16 @@ logger.addHandler(ch)
 
 class AMCPServer(liblo.Server):
 
-    def __init__(self, port, client_port):
+    def __init__(self, port, client_ip, client_port):
+        liblo.Server.__init__(self, port)
+        self.client = liblo.Address(client_ip, client_port)
+
         logger.info('action="init_server", port="%s", client_port="%s"',
                      port, client_port)
-        self.broadcast_ip = self.get_broadcast()
-        self.client_port = client_port
+
+        # Allow broadcast to clients
+        self.socket = socket.fromfd(self.fileno(), socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, True)
 
         self.sound_effects = SoundEffects()
         self.water = Water()
@@ -113,15 +125,6 @@ class AMCPServer(liblo.Server):
             }
         }
 
-        liblo.Server.__init__(self, port)
-
-    def get_broadcast(self):
-        # This is jank, but it works for now. Broadcast on x.x.x.255
-        ip = socket.gethostbyname(socket.gethostname())
-        ipsplit = ip.split('.')
-        ipsplit[3] = '255'
-        return '.'.join(ipsplit)
-
     @liblo.make_method(None, None)
     def catch_all(self, path, args):
         p = path.split("/")
@@ -131,21 +134,10 @@ class AMCPServer(liblo.Server):
             action = p[2]
         except IndexError:  # No action, must be a page change
             logger.debug('action="active_page", page="%s"' % system)
-            if system == "ping":
-                # Device sent a ping, sync all systems/pages.
-                # Pings can be turned on in TouchOSC under Options ~Ed
-                # TODO(ed): This would be nice to only sync the one client,
-                # but unsure how to get the client's host/ip
-                logger.debug('action="ping"')
-                self.sync_systems()
-            else:
-                try:
-                    self.systems[system]['sync'](self.broadcast_ip,
-                                                 self.client_port)
-                except KeyError:
-                    logger.warn(
-                        'action="activate_page", error="no sync method defined')
-            return
+
+            # Pages aren't strictly delineated by subsystem, and we don't have much data
+            # to send. Sync everything.
+            return self.sync_systems()
 
         if system == 'smb':
             x = p[3]
@@ -160,10 +152,17 @@ class AMCPServer(liblo.Server):
                 'system="%s", action=%s'
                 % (path, args, system, action))
 
+        if system == 'water':
+            # Be extra vigilant in keeping the water state sync'ed-
+            # We should get a positive ACK from the server every time something
+            # changes. (Users can see the RX light blink as a confirmation).
+            # This also takes care of the 'all rain off' state.
+            self.systems[system]['sync'](self.client)
+
     def sync_systems(self):
         for sys in self.systems:
             try:
-                self.systems[sys]['sync'](self.broadcast_ip, self.client_port)
+                self.systems[sys]['sync'](self.client)
             except KeyError:
                 logger.warn('action="sync_systems", system="%s", '
                             'error="no sync method defined', sys)
@@ -189,17 +188,6 @@ class AMCPServer(liblo.Server):
     def gamma(self, path, args):
         value = args[0]
 
-
-    # @liblo.make_method('/foo', 'ifs')
-    # def foo_callback(self, path, args):
-    #     i, f, s = args
-    #     logger.debug("received message '%s' with arguments: %d, %f, %s"
-    #                  % (path, i, f, s))
-
-    # @liblo.make_method(None, None)
-    # def fallback(self, path, args):
-    #     print "received unknown message '%s' Args: %s" % (path, args)
-
     def mainLoop(self):
         while True:
 
@@ -222,13 +210,12 @@ class Water():
             'spare': 0.0
         }
 
-    def sync(self, ip, port):
+    def sync(self, client):
         logger.debug(
-            'system="%s", action="sync", ip="%s", port="%s", toggles=%s',
-            self.system, ip, port, self.toggles)
+            'system="%s", action="sync", client=%r, toggles=%s',
+            self.system, client, self.toggles)
         for t in self.toggles:
-            liblo.send(liblo.Address(ip, port),
-                       ("/%s/%s" % (self.system, t)), self.toggles[t])
+            liblo.send(client, ("/%s/%s" % (self.system, t)), self.toggles[t])
 
     def toggle_state(self, action, pin, toggle):
         self.pi.send(pin, toggle and 1 or 0)
@@ -262,10 +249,10 @@ class Lighting():
         self.controller = effects.LightController()
         self.lightningProbability = 0
 
-    def sync(self, ip, port):
+    def sync(self, client):
         # TODO(ed): Sync the toggles
-        logger.debug('system="%s", action="sync", ip="%s", port="%s"',
-                     self.system, ip, port)
+        logger.debug('system="%s", action="sync", client="%r"',
+                     self.system, client)
 
     def strobe(self, press):
         """ Light up cloud for as long as button is held. """
@@ -329,10 +316,10 @@ class SoundEffects():
         self.so.initRain(os.path.join(MEDIA_DIRECTORY, RAIN_FILENAME))
         self.so.setRainVolume(0)
 
-    def sync(self, ip, port):
+    def sync(self, client):
         # TODO(ed): Sync the toggles
-        logger.debug('system="%s", action="sync", ip="%s", port="%s"',
-                     self.system, ip, port)
+        logger.debug('system="%s", action="sync", client="%r"',
+                     self.system, client)
 
     def rain_volume(self, volume):
         self.so.setRainVolume(volume)
@@ -437,9 +424,10 @@ class PiGPIO():
                      % (pin_num, value))
         self.output(pin_num, value)
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
+
     try:
-        server = AMCPServer(port=8000, client_port=9000)
+        server = AMCPServer(port=8000, client_ip=BROADCAST_IP, client_port=9000)
     except liblo.ServerError, err:
         print str(err)
         sys.exit()
