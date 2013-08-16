@@ -247,7 +247,7 @@ class Lighting():
         self.controller.params.temperature = 4000 * (colortemp + 1)
 
     def turbulence(self, turbulence):
-        self.controller.params.turbulence = turbulence * .2
+        self.controller.params.turbulence = turbulence * .4
 
     def speed(self, speed):
         self.controller.params.wind_speed = speed * .8
