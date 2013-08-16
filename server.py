@@ -314,7 +314,7 @@ class SoundOut():
             print "Init mixer"
             os.system("amixer sset PCM 0")
         self.sounds = []
-        pygame.mixer.init(11025)
+        pygame.mixer.init(44100)
         self.setVolume(defaultVolume)
     
     def initRain(self, rain_filename):
