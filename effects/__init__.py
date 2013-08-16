@@ -265,7 +265,7 @@ class LightController(object):
         # since translations are in noise-space rather than model-space.
 
         dtz = dt * self.params.detail
-        a = math.radians(self.params.wind_heading)
+        a = math.radians(self.params.wind_heading - self.params.rotation)
         self.translation[0] += math.cos(a) * self.params.wind_speed * dtz
         self.translation[1] += math.sin(a) * self.params.wind_speed * dtz
         self.translation[3] += self.params.turbulence * dtz
