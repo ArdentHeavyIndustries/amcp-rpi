@@ -85,7 +85,7 @@ class AMCPServer(liblo.Server):
                 'brightness': self.light.brightness,
                 'contrast': self.light.contrast,
                 'detail': self.light.detail,
-                'color_bottom': self.light.color_top,
+                'color_top': self.light.color_top,
                 'color_bottom': self.light.color_bottom,
                 'turbulence': self.light.turbulence,
                 'speed': self.light.speed,
@@ -258,10 +258,10 @@ class Lighting():
         self.controller.params.wind_speed = speed * .8
 
     def heading(self, x, y):
-        self.controller.params.wind_heading = math.atan2(x, y*-1)*180/math.pi
+        self.controller.params.wind_heading = math.atan2(y, -x)*180/math.pi
 
     def rotation(self, x, y):
-        self.controller.params.rotation = math.atan2(x, y*-1)*180/math.pi
+        self.controller.params.rotation = math.atan2(x, -y) * -180/math.pi
 
 class SoundEffects():
     """Play different sound effects.
