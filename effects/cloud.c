@@ -56,8 +56,8 @@ typedef struct {
 typedef struct {
     const float *model;
     float mat[16];
-    float baseColor[3];
-    float noiseColor[3];
+    const float *colors;
+    float contrast;
     int pixelCount;
     int lightningCount; 
     Lightning_t *lightning;
@@ -102,12 +102,13 @@ inline static void ALWAYS_INLINE render(CloudArgs_t args, char *pixels)
         w = args.mat[3] * x0 + args.mat[7] * y0 + args.mat[11] * z0 + args.mat[15];
 
         // Fractional brownian motion
-        n = fbm_noise4(x, y, z, w, NUM_OCTAVES, PERSISTENCE, LACUNARITY);
+        n = 1.0f + args.contrast * fbm_noise4(x, y, z, w, NUM_OCTAVES, PERSISTENCE, LACUNARITY);
 
         // Color interpolation
-        r = args.baseColor[0] + n * args.noiseColor[0];
-        g = args.baseColor[1] + n * args.noiseColor[1];
-        b = args.baseColor[2] + n * args.noiseColor[2];
+        r = args.colors[0] * n;
+        g = args.colors[1] * n;
+        b = args.colors[2] * n;
+        args.colors += 3;
 
         // Sum the effects of each lightning object
         while (ltCount--) {
@@ -143,20 +144,20 @@ static PyObject* py_render(PyObject* self, PyObject* args)
      */
 
     CloudArgs_t ca;
-    int i, modelBytes;
+    int i, modelBytes, colorsBytes;
     Py_ssize_t tmp;
     PyObject *lightningObj;
     char *pixels;
     PyObject *result = NULL;
 
-    if (!PyArg_ParseTuple(args, "t#(ffffffffffffffff)(fff)(fff)O:render",
+    if (!PyArg_ParseTuple(args, "t#(ffffffffffffffff)t#fO:render",
         &ca.model, &modelBytes,
         &ca.mat[0],  &ca.mat[1],  &ca.mat[2],  &ca.mat[3],  
         &ca.mat[4],  &ca.mat[5],  &ca.mat[6],  &ca.mat[7],
         &ca.mat[8],  &ca.mat[9],  &ca.mat[10], &ca.mat[11], 
         &ca.mat[12], &ca.mat[13], &ca.mat[14], &ca.mat[15],
-        &ca.baseColor[0], &ca.baseColor[1], &ca.baseColor[2],
-        &ca.noiseColor[0], &ca.noiseColor[1], &ca.noiseColor[2],
+        &ca.colors, &colorsBytes,
+        &ca.contrast,
         &lightningObj)) {
         return NULL;
     }
@@ -166,6 +167,11 @@ static PyObject* py_render(PyObject* self, PyObject* args)
         return NULL;
     }
     ca.pixelCount = modelBytes / 12;
+
+    if (modelBytes != colorsBytes) {
+        PyErr_SetString(PyExc_ValueError, "Colors string length does not match model length");
+        return NULL;
+    }
 
     if (!PySequence_Check(lightningObj)) {
         PyErr_SetString(PyExc_TypeError, "Lightning is not a sequence object");
@@ -205,11 +211,11 @@ static PyObject* py_render(PyObject* self, PyObject* args)
 
 static PyMethodDef cloud_functions[] = {
     { "render", (PyCFunction)py_render, METH_VARARGS,
-        "render(model, matrix, baseColor, noiseColor, lightning) -- return rendered RGB pixels, as a string\n\n"
+        "render(model, matrix, colors, contrast, lightning) -- return rendered RGB pixels, as a string\n\n"
         "model -- (x,y,z) coordinates for each LED, represented as a string of packed 32-bit floats\n"
         "matrix -- List of 16 floats; a column-major 4x4 matrix which model coordinates are multiplied by\n"
-        "baseColor -- (r,g,b) tuple for the base color to which other colors are added\n"
-        "noiseColor -- (r,g,b) tuple which is multiplied by the noise field and added to the bsae color\n"
+        "colors -- (r,g,b) base color for each pixel, as a string of packed 32-bit floats\n"
+        "contrast -- Proportion of base color to modulate with noise field\n"
         "lightning -- List of lightning points, in model space. Each one is an (x, y, z, r, g, b, falloff) tuple\n"
     },
     {NULL}
