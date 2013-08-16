@@ -145,16 +145,19 @@ class LightParameters(object):
 class LightningBolt(object):
     """A single in-cloud lightning bolt."""
 
-    def __init__(self, position):
+    def __init__(self, position, chainable=True,
+            strength=None, falloff=None, fadeDuration=None, flickerDuration=None):
+
         self.position = position
+        self.chainable = chainable
 
         # Shape of this bolt
-        self.strength = abs(random.gauss(0.5, 0.2))
-        self.falloff = random.uniform(2.0, 5.0)
+        self.strength = strength or abs(random.gauss(0.5, 0.2))
+        self.falloff = falloff or random.uniform(2.0, 5.0)
 
         # Timeline
-        self.fadeDuration = abs(random.gauss(0.1, 0.2))
-        self.flickerDuration = abs(random.gauss(0.1, 0.5))
+        self.fadeDuration = fadeDuration or abs(random.gauss(0.1, 0.2))
+        self.flickerDuration = flickerDuration or abs(random.gauss(0.1, 0.5))
         self.lifetime = self.fadeDuration + self.flickerDuration
 
     def render(self):
@@ -288,7 +291,9 @@ class LightController(object):
                  t[0], t[1], t[2], t[3] ]
 
     def makeLightningBolt(self, x, y, z=0):
-        self.lightning.append(LightningBolt([x, y, z]))
+        # Make a single manually-positioned lightning bolt, with a short duration and no chaining.
+        self.lightning.append(LightningBolt([x, y, z],
+            chainable=False, strength=1.0, falloff=20.0, fadeDuration=0.2, flickerDuration=0.1))
 
     def _updateLightning(self, dt):
         # Calculate lightning parameters for this frame
@@ -312,10 +317,11 @@ class LightController(object):
                 # as the center of a normal distribution.
 
                 parent = random.choice(self.lightning)
-                self.lightning.append(LightningBolt([
-                    random.gauss( parent.position[i], 0.5 )
-                    for i in range(3)
-                    ]))
+                if parent.chainable:
+                    self.lightning.append(LightningBolt([
+                        random.gauss( parent.position[i], 0.5 )
+                        for i in range(3)
+                        ]))
 
         # Render lightning bolts, and remove any that are expired
 
