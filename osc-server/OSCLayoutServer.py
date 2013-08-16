@@ -30,7 +30,7 @@ except ImportError:
     from StringIO import StringIO
 
 filename = 'amcp_template.touchosc'
-PORT = 8000
+PORT = 9658
 
 def doit(filename):
     class OSCRequestHandler(SimpleHTTPRequestHandler):
