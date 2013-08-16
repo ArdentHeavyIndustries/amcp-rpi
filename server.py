@@ -274,7 +274,8 @@ class SoundEffects():
             os.path.join(MEDIA_DIRECTORY, 'smb', 'smb*'))
         self.so = SoundOut()
         self.so.initRain(os.path.join(MEDIA_DIRECTORY, RAIN_FILENAME))
-       
+        self.so.setRainVolume(0)
+
     def rain_volume(self, volume):
         self.so.setRainVolume(volume)
 
