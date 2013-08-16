@@ -227,7 +227,7 @@ class Lighting():
 
     def cloud_xy(self, x, y):
         """ Light up cloud at given XY coordinate. """
-        self.controller.makeLightningBolt(x*-1, y*-1)
+        self.controller.makeLightningBolt(x, -y)
 
     def cloud_z(self, z):
         """ Change the new lighting percentage value.
