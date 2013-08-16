@@ -16,6 +16,7 @@ import logging
 import math
 import os
 import platform
+import socket
 import subprocess
 import sys
 import time
@@ -60,14 +61,19 @@ logger.addHandler(ch)
 
 class AMCPServer(liblo.Server):
 
-    def __init__(self, port):
-        logger.debug('action="init_server", port="%s"' % port)
+    def __init__(self, port, client_port):
+        logger.info('action="init_server", port="%s", client_port="%s"',
+                     port, client_port)
+        self.broadcast_ip = self.get_broadcast()
+        self.client_port = client_port
+
         self.sound_effects = SoundEffects()
         self.water = Water()
         self.light = Lighting()
 
         self.systems = {
             'sound': {
+                'sync': self.sound_effects.sync,
                 'volume': self.sound_effects.volume,
                 'thunder': self.sound_effects.thunder,
                 'rain_volume': self.sound_effects.rain_volume,
@@ -76,12 +82,14 @@ class AMCPServer(liblo.Server):
             },
 
             'light': {
+                'sync': self.light.sync,
                 'lightning': self.light.strobe,
                 'cloud_z': self.light.cloud_z,
                 'cloud_xy': self.light.cloud_xy,
             },
 
             'light2': {
+                'sync': self.light.sync,
                 'brightness': self.light.brightness,
                 'contrast': self.light.contrast,
                 'detail': self.light.detail,
@@ -93,17 +101,27 @@ class AMCPServer(liblo.Server):
                 'rotation': self.light.rotation,
             },
             'smb': {
+                'sync': self.sound_effects.sync,
                 'smb_effects': self.sound_effects.smb_sounds,
             },
             'water': {
+                'sync': self.water.sync,
                 'rain': self.water.rain,
                 'mist': self.water.mist,
                 'spare': self.water.spare,
                 'make_it_rain': self.water.make_it_rain,
+                'all_rain_off': self.water.all_rain_off
             }
         }
 
         liblo.Server.__init__(self, port)
+
+    def get_broadcast(self):
+        # This is jank, but it works for now. Broadcast on x.x.x.255
+        ip = socket.gethostbyname(socket.gethostname())
+        ipsplit = ip.split('.')
+        ipsplit[3] = '255'
+        return '.'.join(ipsplit)
 
     @liblo.make_method(None, None)
     def catch_all(self, path, args):
@@ -114,6 +132,20 @@ class AMCPServer(liblo.Server):
             action = p[2]
         except IndexError:  # No action, must be a page change
             logger.debug('action="active_page", page="%s"' % system)
+            if system == "ping":
+                # Device sent a ping, sync all systems/pages.
+                # Pings can be turned on in TouchOSC under Options ~Ed
+                # TODO(ed): This would be nice to only sync the one client,
+                # but unsure how to get the client's host/ip
+                logger.debug('action="ping"')
+                self.sync_systems()
+            else:
+                try:
+                    self.systems[system]['sync'](self.broadcast_ip,
+                                                 self.client_port)
+                except KeyError:
+                    logger.warn(
+                        'action="activate_page", error="no sync method defined')
             return
 
         if system == 'smb':
@@ -128,6 +160,15 @@ class AMCPServer(liblo.Server):
                 'action="catch_all", path="%s", error="not found" args="%s", '
                 'system="%s", action=%s'
                 % (path, args, system, action))
+
+    def sync_systems(self):
+        for sys in self.systems:
+            try:
+                self.systems[sys]['sync'](self.broadcast_ip, self.client_port)
+            except KeyError:
+                logger.warn('action="sync_systems", system="%s", '
+                            'error="no sync method defined', sys)
+
 
     def whitepoint(self, path, args):
         value = args[0]
@@ -176,24 +217,45 @@ class Water():
     def __init__(self):
         self.system = 'water'
         self.pi = PiGPIO()
+        self.toggles = {
+            'rain': 0.0,
+            'mist': 0.0,
+            'spare': 0.0
+        }
+
+    def sync(self, ip, port):
+        logger.debug(
+            'system="%s", action="sync", ip="%s", port="%s", toggles=%s',
+            self.system, ip, port, self.toggles)
+        for t in self.toggles:
+            liblo.send(liblo.Address(ip, port),
+                       ("/%s/%s" % (self.system, t)), self.toggles[t])
 
     def toggle_state(self, action, pin, toggle):
         self.pi.send(pin, toggle and 1 or 0)
 
     def rain(self, toggle):
         self.toggle_state('rain', RAIN_PIN, toggle)
+        self.toggles['rain'] = toggle
 
     def mist(self, toggle):
         self.toggle_state('mist', MIST_PIN, toggle)
+        self.toggles['mist'] = toggle
 
     def spare(self, toggle):
         self.toggle_state('spare', SPARE_PIN, toggle)
+        self.toggles['spare'] = toggle
 
     def make_it_rain(self, press):
         self.rain(True)
         time.sleep(5000)
         self.rain(False)
         pass
+
+    def all_rain_off(self, press):
+        # TODO(ed): Turn off all the rain
+        if press:
+            logger.info('system="%s", action="all_rain_off"', self.system)
 
     def all_the_rain(self):
         pass
@@ -213,6 +275,11 @@ class Lighting():
         self.system = 'light'
         self.controller = effects.LightController()
         self.lightningProbability = 0
+
+    def sync(self, ip, port):
+        # TODO(ed): Sync the toggles
+        logger.debug('system="%s", action="sync", ip="%s", port="%s"',
+                     self.system, ip, port)
 
     def strobe(self, press):
         """ Light up cloud for as long as button is held. """
@@ -274,7 +341,12 @@ class SoundEffects():
             os.path.join(MEDIA_DIRECTORY, 'smb', 'smb*'))
         self.so = SoundOut()
         self.so.initRain(os.path.join(MEDIA_DIRECTORY, RAIN_FILENAME))
-       
+
+    def sync(self, ip, port):
+        # TODO(ed): Sync the toggles
+        logger.debug('system="%s", action="sync", ip="%s", port="%s"',
+                     self.system, ip, port)
+
     def rain_volume(self, volume):
         self.so.setRainVolume(volume)
 
@@ -339,6 +411,7 @@ class SoundOut():
             s.set_volume(volume)
 
     def play(self, soundfile, seek=None):
+        logger.debug('action="play", soundfile="%s"' % soundfile)
         s = pygame.mixer.Sound(soundfile)
         ch = s.play()
         self.sounds.append((s, ch))
@@ -379,7 +452,7 @@ class PiGPIO():
 
 if (__name__ == "__main__"):
     try:
-        server = AMCPServer(8000)
+        server = AMCPServer(port=8000, client_port=9000)
     except liblo.ServerError, err:
         print str(err)
         sys.exit()
@@ -398,8 +471,16 @@ if (__name__ == "__main__"):
 
     try:
         server.mainLoop()
+    except KeyboardInterrupt:
+        # Cleanup
+        if service:
+            service.unpublish()
+        if OnPi():
+            import RPi.GPIO as GPIO
+            GPIO.cleanup()
+
     finally:
-        logger.debug('action="server_shutdown"')
+        logger.info('action="server_shutdown"')
 
         # Cleanup
         if service:
