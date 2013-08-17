@@ -167,27 +167,6 @@ class AMCPServer(liblo.Server):
                 logger.warn('action="sync_systems", system="%s", '
                             'error="no sync method defined', sys)
 
-
-    def whitepoint(self, path, args):
-        value = args[0]
-        path = path.split("/")
-        print path[3]
-        logger.debug('action="set_whitepoint", channel="%s", value="%s"'
-                     % (path[3], args[0]))
-        if path[3] == '1':
-            # TODO: Send R changes to fadecandy
-            pass
-        elif path[3] == '2':
-            # TODO: Send G changes to fadecandy
-            pass
-        elif path[3] == '3':
-            # TODO: Send B changes to fadecandy
-            pass
-
-    @liblo.make_method(None, 'f')
-    def gamma(self, path, args):
-        value = args[0]
-
     def mainLoop(self):
         while True:
 
@@ -244,15 +223,45 @@ class Lighting():
        Rendering is handled by effects.LightController().
        """
 
+    lightningProbabilityScale = 0.4
+    contrastScale = 10.0
+    detailScale = 3.0
+    turbulenceScale = 0.4
+    windSpeedScale = 0.8
+
     def __init__(self):
         self.system = 'light'
         self.controller = effects.LightController()
         self.lightningProbability = 0
 
     def sync(self, client):
-        # TODO(ed): Sync the toggles
         logger.debug('system="%s", action="sync", client="%r"',
                      self.system, client)
+
+        liblo.send(client, liblo.Bundle(
+
+            # Gross, this needs refactoring...
+            liblo.Message("/light/cloud_z", self.controller.params.lightning_new / self.lightningProbabilityScale),
+            liblo.Message("/light2/brightness", self.controller.params.brightness),
+            liblo.Message("/light2/contrast", self.controller.params.contrast / self.contrastScale),
+            liblo.Message("/light2/detail", self.controller.params.detail / self.detailScale),
+            liblo.Message("/light2/color_top", self.controller.params.color_top),
+            liblo.Message("/light2/color_bottom", self.controller.params.color_bottom),
+            liblo.Message("/light2/turbulence", self.controller.params.turbulence / self.turbulenceScale),
+            liblo.Message("/light2/speed", self.controller.params.wind_speed / self.windSpeedScale),
+
+            # XXX: This doesn't work- TouchOSC seems to spam these events
+            #      at both XY pads for some reason. Bug in TouchOSC? Using
+            #      liblo incorrectly?
+            #
+            # liblo.Message("/light2/heading",
+            #     -math.cos(self.controller.params.wind_heading),
+            #     math.sin(self.controller.params.wind_heading)),
+            #
+            # liblo.Message("/light2/rotation",
+            #     math.sin(-self.controller.params.rotation),
+            #     -math.cos(-self.controller.params.rotation))
+            ))
 
     def strobe(self, press):
         """ Light up cloud for as long as button is held. """
@@ -260,10 +269,6 @@ class Lighting():
             self.controller.params.lightning_new = 1.0
         else:
             self.controller.params.lightning_new = self.lightningProbability
-
-    def flood_lights(self, light_num, intensity):
-        # Turn on light_num at intensity
-        pass
 
     def cloud_xy(self, x, y):
         """ Light up cloud at given XY coordinate. """
@@ -273,17 +278,17 @@ class Lighting():
         """ Change the new lighting percentage value.
         Wants to be non-linear curve, but this will suffice for now.
         """
-        self.lightningProbability = z * 0.4
+        self.lightningProbability = z * self.lightningProbabilityScale
         self.controller.params.lightning_new = self.lightningProbability
 
     def brightness(self, bright):
         self.controller.params.brightness = bright
 
     def contrast(self, contrast):
-        self.controller.params.contrast = contrast*10
+        self.controller.params.contrast = contrast * self.contrastScale
 
     def detail(self, detail):
-        self.controller.params.detail = detail*3
+        self.controller.params.detail = detail * self.detailScale
 
     def color_top(self, color_top):
         self.controller.params.color_top = color_top
@@ -292,16 +297,16 @@ class Lighting():
         self.controller.params.color_bottom = color_bottom
 
     def turbulence(self, turbulence):
-        self.controller.params.turbulence = turbulence * .4
+        self.controller.params.turbulence = turbulence * self.turbulenceScale
 
     def speed(self, speed):
-        self.controller.params.wind_speed = speed * .8
+        self.controller.params.wind_speed = speed * self.windSpeedScale
 
     def heading(self, x, y):
-        self.controller.params.wind_heading = math.atan2(y, -x)*180/math.pi
+        self.controller.params.wind_heading = math.atan2(y, -x)
 
     def rotation(self, x, y):
-        self.controller.params.rotation = math.atan2(x, -y) * -180/math.pi
+        self.controller.params.rotation = -math.atan2(x, -y)
 
 class SoundEffects():
     """Play different sound effects.
@@ -314,20 +319,23 @@ class SoundEffects():
             os.path.join(MEDIA_DIRECTORY, 'smb', 'smb*'))
         self.so = SoundOut()
         self.so.initRain(os.path.join(MEDIA_DIRECTORY, RAIN_FILENAME))
-        self.so.setRainVolume(0)
+
+        self.values = {}
+        self.volume(0.3)
+        self.rain_volume(0)
 
     def sync(self, client):
-        # TODO(ed): Sync the toggles
         logger.debug('system="%s", action="sync", client="%r"',
                      self.system, client)
+        for t in self.values:
+            liblo.send(client, ("/%s/%s" % (self.system, t)), self.values[t])
 
     def rain_volume(self, volume):
+        self.values['rain_volume'] = volume
         self.so.setRainVolume(volume)
 
     def volume(self, volume):
-        self.so.setVolume(volume)
-
-    def volume(self, volume):
+        self.values['volume'] = volume
         self.so.setVolume(volume)
 
     def press_play(self, sound_file, seek=None):
@@ -341,11 +349,6 @@ class SoundEffects():
         sound_file = os.path.join(MEDIA_DIRECTORY, 'thunder_hd.wav')
         if press:
             self.press_play(sound_file)
-
-    #def rain(self, press):
-    #    sound_file = os.path.join(MEDIA_DIRECTORY, 'rain.wav')
-    #    if press:
-    #        self.press_play(sound_file)
 
     def its_raining_men(self, press):
         sound_file = os.path.join(MEDIA_DIRECTORY, 'its_raining_men.wav')
@@ -423,6 +426,7 @@ class PiGPIO():
         logger.debug('action="send_rpi_gpio", pin_number="%i", value="%i"'
                      % (pin_num, value))
         self.output(pin_num, value)
+
 
 if __name__ == "__main__":
 

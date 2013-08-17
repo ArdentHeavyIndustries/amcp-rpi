@@ -113,11 +113,11 @@ class LightParameters(object):
     # How fast the cloud shape changes over time. 0 == perfectly still.
     turbulence = 0.4
 
-    # Wind heading, in degrees, and wind speed in meters per second.
+    # Wind heading, in radians, and wind speed in meters per second.
     wind_heading = 0
     wind_speed = 0.2
 
-    # Z-axis rotation angle for the whole cloud, in degrees
+    # Z-axis rotation angle for the whole cloud, in radians
     rotation = 0
 
     # Colors for top and bottom, as lookup table indices between 0 and 1
@@ -265,7 +265,7 @@ class LightController(object):
         # since translations are in noise-space rather than model-space.
 
         dtz = dt * self.params.detail
-        a = math.radians(self.params.wind_heading - self.params.rotation)
+        a = self.params.wind_heading - self.params.rotation
         self.translation[0] += math.cos(a) * self.params.wind_speed * dtz
         self.translation[1] += math.sin(a) * self.params.wind_speed * dtz
         self.translation[3] += self.params.turbulence * dtz
@@ -281,9 +281,8 @@ class LightController(object):
 
         z = self.params.detail
         t = numpy.fmod(self.translation, 1024.0)
-        a = math.radians(self.params.rotation)
-        s = z * math.sin(a)
-        c = z * math.cos(a)
+        s = z * math.sin(self.params.rotation)
+        c = z * math.cos(self.params.rotation)
 
         return [ c,      -s,    0,    0,
                  s,       c,    0,    0,
