@@ -224,6 +224,7 @@ class Lighting():
        """
 
     lightningProbabilityScale = 0.4
+    brightnessScale = 1.5
     contrastScale = 10.0
     detailScale = 3.0
     turbulenceScale = 0.4
@@ -242,7 +243,7 @@ class Lighting():
 
             # Gross, this needs refactoring...
             liblo.Message("/light/cloud_z", self.controller.params.lightning_new / self.lightningProbabilityScale),
-            liblo.Message("/light2/brightness", self.controller.params.brightness),
+            liblo.Message("/light2/brightness", self.controller.params.brightness / self.brightnessScale),
             liblo.Message("/light2/contrast", self.controller.params.contrast / self.contrastScale),
             liblo.Message("/light2/detail", self.controller.params.detail / self.detailScale),
             liblo.Message("/light2/color_top", self.controller.params.color_top),
@@ -282,7 +283,7 @@ class Lighting():
         self.controller.params.lightning_new = self.lightningProbability
 
     def brightness(self, bright):
-        self.controller.params.brightness = bright
+        self.controller.params.brightness = bright * self.brightnessScale
 
     def contrast(self, contrast):
         self.controller.params.contrast = contrast * self.contrastScale
