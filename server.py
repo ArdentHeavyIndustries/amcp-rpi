@@ -339,8 +339,8 @@ class SoundEffects():
         self.values['volume'] = volume
         self.so.setVolume(volume)
 
-    def press_play(self, sound_file, seek=None):
-        self.so.play(sound_file, seek)
+    def press_play(self, sound_file):
+        self.so.play(sound_file)
 
     def silence(self, press):
         if press:
@@ -354,7 +354,7 @@ class SoundEffects():
     def its_raining_men(self, press):
         sound_file = os.path.join(MEDIA_DIRECTORY, 'its_raining_men.wav')
         if press:
-            self.press_play(sound_file, seek=73.5)
+            self.press_play(sound_file)
 
     def smb_sounds(self, x=None, y=None, press=None):
         if press:
@@ -388,14 +388,13 @@ class SoundOut():
         for (s, ch) in self.sounds:
             s.set_volume(volume)
 
-    def play(self, soundfile, seek=None):
+    def play(self, soundfile):
         logger.debug('action="play", soundfile="%s"' % soundfile)
         s = pygame.mixer.Sound(soundfile)
         ch = s.play()
+        s.set_volume(self.volume)
         self.sounds.append((s, ch))
         return (s, ch)
-        #if seek:
-        #    self.player.seek(seek)
 
     def stop(self):
         self.prune_sounds()
