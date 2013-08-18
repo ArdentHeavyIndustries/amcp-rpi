@@ -46,6 +46,7 @@ MEDIA_DIRECTORY = 'media'
 RAIN_PIN = 16 # = GPIO 23
 MIST_PIN = 18 # = GPIO 24
 SPARE_PIN = 22 # = GPIO 25
+PUMP_PIN = 15 # GPIO 22
 
 # Sound
 RAIN_FILENAME = 'rain.wav'
@@ -121,6 +122,7 @@ class AMCPServer(liblo.Server):
                 'rain': self.water.rain,
                 'mist': self.water.mist,
                 'spare': self.water.spare,
+                'pump': self.water.pump,
                 'all_rain_off': self.water.all_rain_off,
             }
         }
@@ -186,7 +188,8 @@ class Water():
         self.toggles = {
             'rain': 0.0,
             'mist': 0.0,
-            'spare': 0.0
+            'spare': 0.0,
+            'pump': 0.0,
         }
 
     def sync(self, client):
@@ -211,11 +214,16 @@ class Water():
         self.toggle_state('spare', SPARE_PIN, toggle)
         self.toggles['spare'] = toggle
 
+    def pump(self, toggle):
+        self.toggle_state('pump', PUMP_PIN, toggle)
+        self.toggles['pump'] = toggle
+
     def all_rain_off(self, press):
         if press:
             self.rain(False)
             self.mist(False)
             self.spare(False)
+            self.pump(False)
 
 
 class Lighting():
