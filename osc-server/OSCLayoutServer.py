@@ -30,6 +30,7 @@ except ImportError:
     from StringIO import StringIO
 
 filename = 'amcp_template.touchosc'
+PORT = 8000
 
 def doit(filename):
     class OSCRequestHandler(SimpleHTTPRequestHandler):
@@ -58,9 +59,9 @@ def doit(filename):
     if platform.system() == 'Linux':
         from avahi_announce import ZeroconfService
         service = ZeroconfService(
-            name="AMCP", port=8000, stype="_touchosceditor._tcp")
+            name="AMCP", port=PORT, stype="_touchosceditor._tcp")
         service.publish()
-    server_address = ('', 9658)
+    server_address = ('', PORT)
     httpd = BaseHTTPServer.HTTPServer(server_address, OSCRequestHandler)
     try:
         httpd.serve_forever()
