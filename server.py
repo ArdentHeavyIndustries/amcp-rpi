@@ -423,6 +423,7 @@ class PiGPIO():
             GPIO.setup(RAIN_PIN, GPIO.OUT)
             GPIO.setup(MIST_PIN, GPIO.OUT)
             GPIO.setup(SPARE_PIN, GPIO.OUT)
+            GPIO.setup(PUMP_PIN, GPIO.OUT)
             self.output = GPIO.output
         else:
             def fake_gpio(pin, value):
