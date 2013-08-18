@@ -15,11 +15,15 @@ import BaseHTTPServer
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 import urllib
 import cgi
+import platform
 import sys
 import shutil
 import time
 import mimetypes
 import zipfile
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -49,9 +53,20 @@ def doit(filename):
             full_filename = os.path.join(os.path.dirname(__file__), filename)
             z = zipfile.ZipFile(full_filename)
             return z.open('index.xml', 'r')
+
+    service = None
+    if platform.system() == 'Linux':
+        from avahi_announce import ZeroconfService
+        service = ZeroconfService(
+            name="AMCP", port=8000, stype="_touchosceditor._tcp")
+        service.publish()
     server_address = ('', 9658)
     httpd = BaseHTTPServer.HTTPServer(server_address, OSCRequestHandler)
-    httpd.serve_forever()
+    try:
+        httpd.serve_forever()
+    finally:
+        if service:
+            service.unpublish()
 
 if __name__ == '__main__':
     filename = sys.argv[1] if len(sys.argv) == 2 else 'amcp_template.touchosc'
