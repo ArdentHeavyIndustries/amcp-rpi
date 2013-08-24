@@ -67,23 +67,18 @@ def strip(controller, channel, (x, y, z), (xd, yd, zd), first=0, count=ledsPerCh
 		led(controller, channel, first + i, (x + xd*i, y + yd*i, z + zd*i))
 
 # Place LEDs on one strip along a circular arc in the XY plane
-def arcStrip(controller, channel, (x,y,z), radius, angle, count=ledsPerChannel, reverse=False):
+def arcStrip(controller, channel, (x,y,z), radius, angle, count=ledsPerChannel):
 	circumference = 2 * math.pi * radius
 	angularSpacing = spacing / circumference * 2 * math.pi
 
-	nextAngle = angle + angularSpacing * count
-
-	if reverse:
-		angle += angularSpacing * (count - 1)
-		angularSpacing = -angularSpacing
-
 	for i in range(count):
+		a = angle + angularSpacing * (count - 1 - i)
 		led(controller, channel, i, (
-			x + radius * math.cos(angle + angularSpacing * i),
-			y + radius * math.sin(angle + angularSpacing * i),
+			x + radius * math.cos(a),
+			y + radius * math.sin(a),
 			z))
 
-	return nextAngle
+	return angle + angularSpacing * count
 
 # A strip that takes a corner in the middle and changes direction after 'length1' meters.
 def bentStrip(controller, channel, origin, direction1, direction2, length1):
@@ -116,8 +111,8 @@ for s in range(5):
 #### Circumference, controlllers 0, 1, 2
 #
 # LED strips follow a curve around the front of the platform. Strips
-# start at the bottom and go up. Controllers are left-to-right. The first module
-# is upside-down relative to this orientation.
+# start at the bottom and go up. Controllers are left-to-right, but strips are right-to-left.
+# Strip 0 is at the top, strip 7 at the bottom.
 
 c = pWidth
 d = pDepth/2
@@ -127,10 +122,7 @@ angle = math.atan2(pDepth/2, -pWidth/2)
 for controller in range(3):
 	for s in range(8):
 		z = pHeight / 8.0 * (s+1)
-		rev = controller == 0
-		if rev:
-			s = 7 - s
-		nextAngle = arcStrip(controller, s, (pWidth/2, pDepth/2, z), r, angle, reverse=rev)
+		nextAngle = arcStrip(controller, 7 - s, (pWidth/2, pDepth/2, z), r, angle)
 	angle = nextAngle
 
 # Output JSON
