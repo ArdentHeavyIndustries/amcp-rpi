@@ -11,6 +11,7 @@ Please use logging in key="value" format for statistics and debugging. Ed wants
 to Splunk the cloud.
 
 """
+import cPickle
 import glob
 import logging
 import math
@@ -113,6 +114,9 @@ class AMCPServer(liblo.Server):
                 'heading': self.light.heading,
                 'rotation': self.light.rotation,
             },
+            'light3': {
+                'loadsave': self.light.loadsave,
+            },
             'smb': {
                 'sync': self.sound_effects.sync,
                 'smb_effects': self.sound_effects.smb_sounds,
@@ -141,7 +145,7 @@ class AMCPServer(liblo.Server):
             # to send. Sync everything.
             return self.sync_systems()
 
-        if system == 'smb':
+        if system == 'smb' or system == 'light3':
             x = p[3]
             y = p[4]
             self.systems[system][action](x=x, y=y, press=args[0])
@@ -316,6 +320,23 @@ class Lighting():
 
     def rotation(self, x, y):
         self.controller.params.rotation = -math.atan2(x, -y)
+
+    def loadsave(self, x=None, y=None, press=None):
+        if press:
+            if int(float(x)) % 2 == 0:
+                self.save(int(float(y)))
+            else:
+                self.load(int(float(y)))
+
+    def save(self, slot):
+        logger.info('Saving to slot %d', slot)
+        cPickle.dump(self.controller.params,
+                open('/home/pi/presets/preset%d.pickle' % (slot,), 'w'))
+
+    def load(self, slot):
+        logger.info('Loading from slot %d', slot)
+        self.controller.params = cPickle.load(
+                open('/home/pi/presets/preset%d.pickle' % (slot,), 'r'))
 
 class SoundEffects():
     """Play different sound effects.
