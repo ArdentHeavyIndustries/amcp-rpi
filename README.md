@@ -1,6 +1,8 @@
 amcp-rpi
 ========
 
+[![Join the chat at https://gitter.im/ArdentHeavyIndustries/amcp-rpi](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ArdentHeavyIndustries/amcp-rpi?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Software and configuration for the Ardent Mobile Cloud Platform's Raspberry Pi
 
 System Setup
